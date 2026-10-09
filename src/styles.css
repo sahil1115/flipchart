@@ -1093,8 +1093,120 @@ button:disabled {
   padding: 0;
   border: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.theme-control {
+  position: relative;
+}
+.theme-button {
+  align-items: center;
+  gap: 8px;
+}
+.theme-button-icon {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--text);
+  border-radius: 50%;
+  background: linear-gradient(
+    90deg,
+    var(--text) 50%,
+    var(--surface-opaque) 50%
+  );
+}
+.theme-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(440px, calc(100vw - 32px));
+  padding: 20px;
+  background: var(--surface-opaque) !important;
+}
+.theme-popover-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.theme-popover-heading h2 {
+  font-size: 15px;
+}
+.theme-popover-heading button {
+  font-size: 20px;
+  padding: 4px 12px;
+}
+html[data-theme='frosted-mono'] {
+  background-attachment: fixed;
+}
+html[data-theme='frosted-mono'] h1 {
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 450;
+  letter-spacing: -1.5px;
+}
+html[data-theme='frosted-mono'] .brand-mark,
+html[data-theme='frosted-mono'] .entry-icon {
+  border-radius: 50%;
+}
+html[data-theme='frosted-mono'] .summary,
+html[data-theme='frosted-mono'] .indicator-card:nth-child(odd) {
+  --text: #f1f3f1;
+  --muted-text: #ccd3d1;
+  --accent: #edf1e8;
+  --accent-soft: #596264;
+  --border: #7b8583;
+  --surface-opaque: #41494b;
+  --surface: #41494b;
+  --positive: #a8dfc2;
+  --negative: #f2b2bd;
+  --focus-ring: #edf1e8;
+  --on-accent: #24282b;
+  color: var(--text);
+  background: linear-gradient(135deg, #515b5b, #343a3d);
+}
+html[data-theme='frosted-mono'] .indicator-card {
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+html[data-theme='frosted-mono'] .summary .badge {
+  border-radius: 20px;
+}
+html[data-theme='frosted-mono'] .range-buttons,
+html[data-theme='frosted-mono'] .range-buttons button {
+  border-radius: 24px;
+}
+html[data-theme='frosted-mono'] .range-buttons button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+html[data-theme='frosted-mono'] .chart-legend {
+  border-radius: 14px 14px 0 0;
+}
+html[data-theme='frosted-mono'] .price-chart {
+  border-radius: 0 0 14px 14px;
+  overflow: hidden;
+}
+@media (max-width: 1000px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px 0;
+  }
+  .header-actions {
+    margin-left: auto;
+  }
+  .header-status {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
 }
 .theme-picker legend {
   margin-bottom: 12px;
@@ -1236,6 +1348,29 @@ html[data-theme$='clay'][data-reduced-effects='true']
   border-color: var(--border);
 }
 @media (max-width: 600px) {
+  .header-actions {
+    width: 100%;
+    margin-left: 0;
+    gap: 8px;
+  }
+  .header-actions > button,
+  .theme-control {
+    flex: 1;
+  }
+  .header-actions .settings-button {
+    margin-left: 0;
+    justify-content: center;
+    white-space: nowrap;
+    gap: 6px;
+  }
+  .theme-button {
+    width: 100%;
+  }
+  .theme-popover {
+    left: 0;
+    right: auto;
+    padding: 16px;
+  }
   .theme-option {
     flex-direction: column;
     gap: 8px;

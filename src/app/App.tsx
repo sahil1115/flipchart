@@ -64,6 +64,8 @@ export function App({
   const [notice, setNotice] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const themeControl = useRef<HTMLDivElement>(null);
   const [working, setWorking] = useState(false);
   const [preferenceWarning, setPreferenceWarning] = useState('');
   const [preference, setPreference] = useState(readThemePreference);
@@ -90,6 +92,28 @@ export function App({
       cancelled = true;
     };
   }, [store]);
+
+  useEffect(() => {
+    if (!themeOpen) return;
+    themeControl.current
+      ?.querySelector<HTMLInputElement>('input:checked')
+      ?.focus();
+    const dismiss = (event: PointerEvent) => {
+      if (!themeControl.current?.contains(event.target as Node))
+        setThemeOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setThemeOpen(false);
+      themeControl.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [themeOpen]);
 
   async function activate(dataset: Dataset, token = ++generation.current) {
     live.cancel();
@@ -237,17 +261,91 @@ export function App({
             {dataset?.metadata.mode === 'live' ? 'PROVIDER' : 'LOCAL'}
           </span>
         </div>
-        <button className="settings-button" onClick={openProvider}>
-          Data connection
-        </button>
-        <button
-          className="settings-button"
-          aria-expanded={settingsOpen}
-          aria-controls="appearance-settings"
-          onClick={() => setSettingsOpen(!settingsOpen)}
-        >
-          Settings <span aria-hidden="true">⚙</span>
-        </button>
+        <div className="header-actions">
+          <div className="theme-control" ref={themeControl}>
+            <button
+              className="settings-button theme-button"
+              aria-expanded={themeOpen}
+              aria-controls="theme-menu"
+              onClick={() => setThemeOpen(!themeOpen)}
+            >
+              <span className="theme-button-icon" aria-hidden="true" />
+              Theme
+            </button>
+            {themeOpen && (
+              <GlassPanel
+                id="theme-menu"
+                className="theme-popover"
+                aria-label="Choose theme"
+              >
+                <div className="theme-popover-heading">
+                  <div>
+                    <h2>Choose a theme</h2>
+                    <p className="small">{theme.name} · choose your finish</p>
+                  </div>
+                  <button
+                    aria-label="Close theme picker"
+                    onClick={() => {
+                      setThemeOpen(false);
+                      themeControl.current
+                        ?.querySelector<HTMLButtonElement>('button')
+                        ?.focus();
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <fieldset className="theme-picker">
+                  <legend>Theme</legend>
+                  {Object.values(themes).map((option) => (
+                    <label className="theme-option" key={option.id}>
+                      <input
+                        type="radio"
+                        name="theme"
+                        value={option.id}
+                        checked={preference.themeId === option.id}
+                        onChange={() => {
+                          const next = { ...preference, themeId: option.id };
+                          setPreference(next);
+                          setPreferenceWarning(
+                            writeThemePreference(next)
+                              ? ''
+                              : 'Browser storage is unavailable. Appearance applies for this session.',
+                          );
+                        }}
+                      />
+                      <span
+                        className="theme-swatch"
+                        aria-hidden="true"
+                        style={{
+                          background: option.css['--surface-opaque'],
+                          borderColor: option.css['--border'],
+                        }}
+                      >
+                        <span style={{ background: option.css['--accent'] }} />
+                      </span>
+                      {option.name}
+                    </label>
+                  ))}
+                </fieldset>
+              </GlassPanel>
+            )}
+          </div>
+          <button className="settings-button" onClick={openProvider}>
+            Data connection
+          </button>
+          <button
+            className="settings-button"
+            aria-expanded={settingsOpen}
+            aria-controls="appearance-settings"
+            onClick={() => {
+              setThemeOpen(false);
+              setSettingsOpen(!settingsOpen);
+            }}
+          >
+            Settings <span aria-hidden="true">⚙</span>
+          </button>
+        </div>
       </header>
       {settingsOpen && (
         <GlassPanel
@@ -259,39 +357,7 @@ export function App({
             <h2>Appearance</h2>
             <p>{theme.name} · calm surfaces, clear charts</p>
           </div>
-          <fieldset className="theme-picker">
-            <legend>Theme</legend>
-            {Object.values(themes).map((option) => (
-              <label className="theme-option" key={option.id}>
-                <input
-                  type="radio"
-                  name="theme"
-                  value={option.id}
-                  checked={preference.themeId === option.id}
-                  onChange={() => {
-                    const next = { ...preference, themeId: option.id };
-                    setPreference(next);
-                    setPreferenceWarning(
-                      writeThemePreference(next)
-                        ? ''
-                        : 'Browser storage is unavailable. Appearance applies for this session.',
-                    );
-                  }}
-                />
-                <span
-                  className="theme-swatch"
-                  aria-hidden="true"
-                  style={{
-                    background: option.css['--surface-opaque'],
-                    borderColor: option.css['--border'],
-                  }}
-                >
-                  <span style={{ background: option.css['--accent'] }} />
-                </span>
-                {option.name}
-              </label>
-            ))}
-          </fieldset>
+
           <label className="checkbox-label">
             <input
               type="checkbox"

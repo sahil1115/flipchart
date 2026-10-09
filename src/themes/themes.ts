@@ -136,10 +136,50 @@ export const midnightClay: ThemeDefinition = {
     areaBottom: 'rgba(136,188,235,0.02)',
   },
 };
+export const frostedMono: ThemeDefinition = {
+  id: 'frosted-mono',
+  name: 'Frosted Mono',
+  colorScheme: 'light',
+  css: {
+    ...glassLight.css,
+    '--page-background':
+      'radial-gradient(ellipse at 8% 14%, #d9e8f1 0%, transparent 42%), radial-gradient(ellipse at 85% 30%, #ded5c7 0%, transparent 42%), linear-gradient(135deg, #f5f3ef, #e7e5df 55%, #eef2f3)',
+    '--surface': 'rgba(250, 249, 246, 0.64)',
+    '--surface-opaque': '#f4f3ef',
+    '--surface-elevated': '#e9e8e4',
+    '--plot': '#f3f2ee',
+    '--border': '#c9c9c4',
+    '--text': '#24282b',
+    '--muted-text': '#555b60',
+    '--accent': '#303438',
+    '--accent-soft': '#e1e2df',
+    '--positive': '#326553',
+    '--negative': '#8d4652',
+    '--focus-ring': '#303438',
+    '--shadow':
+      '0 16px 40px rgba(42, 45, 47, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+    '--control-shadow': '0 3px 9px rgba(42, 45, 47, 0.07)',
+    '--radius': '24px',
+    '--control-radius': '14px',
+  },
+  chart: {
+    background: '#f3f2ee',
+    text: '#555b60',
+    grid: '#dfe0db',
+    border: '#c9c9c4',
+    crosshair: '#555b60',
+    positive: '#303438',
+    negative: '#7d847e',
+    accent: '#25292d',
+    areaTop: 'rgba(37,41,45,0.32)',
+    areaBottom: 'rgba(37,41,45,0.02)',
+  },
+};
 export const themes: Readonly<Record<string, ThemeDefinition>> = {
   [glassLight.id]: glassLight,
   [softClay.id]: softClay,
   [midnightClay.id]: midnightClay,
+  [frostedMono.id]: frostedMono,
 };
 export const resolveTheme = (id: string): ThemeDefinition =>
   themes[id] ?? glassLight;

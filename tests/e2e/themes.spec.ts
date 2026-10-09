@@ -17,10 +17,11 @@ for (const width of [375, 1440]) {
         ),
     );
     const canvases = await chart.locator('canvas').count();
-    await page.getByRole('button', { name: /Settings/ }).click();
+    await page.getByRole('button', { name: 'Theme', exact: true }).click();
     for (const [name, id, background] of [
       ['Soft Clay', 'soft-clay', 'rgb(228, 231, 235)'],
       ['Midnight Clay', 'midnight-clay', 'rgb(35, 44, 58)'],
+      ['Frosted Mono', 'frosted-mono', 'rgb(243, 242, 238)'],
     ]) {
       await page.getByRole('radio', { name, exact: true }).check();
       await expect(page.locator('html')).toHaveAttribute('data-theme', id!);
@@ -29,11 +30,21 @@ for (const width of [375, 1440]) {
       await expect(
         page.getByRole('region', { name: 'Dataset summary' }),
       ).toContainText('FLIP');
+      if (id === 'frosted-mono') {
+        await expect(page.locator('.summary-price > strong')).toHaveCSS(
+          'color',
+          'rgb(241, 243, 241)',
+        );
+        await expect(
+          page.locator('.indicator-card').first().locator('h3'),
+        ).toHaveCSS('color', 'rgb(241, 243, 241)');
+      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
+      await page.getByRole('button', { name: /Settings/ }).click();
       await page.getByLabel('Reduce visual effects').check();
       await expect(page.locator('.chart-panel')).toHaveCSS(
         'box-shadow',
@@ -47,19 +58,26 @@ for (const width of [375, 1440]) {
         path: `verification/screenshots/${id}-${width}.png`,
         fullPage: true,
       });
+      await page.getByRole('button', { name: /Settings/ }).click();
+      await page.getByRole('button', { name: 'Theme', exact: true }).click();
       if (width === 1440) {
-        await page.locator('#appearance-settings').screenshot({
-          path: `verification/screenshots/${id}-settings.png`,
-        });
+        await page
+          .locator('#theme-menu')
+          .screenshot({ path: `verification/screenshots/${id}-picker.png` });
+        if (id === 'frosted-mono') {
+          await page.screenshot({
+            path: 'verification/screenshots/frosted-mono-header.png',
+          });
+        }
       }
     }
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute(
       'data-theme',
-      'midnight-clay',
+      'frosted-mono',
     );
     await expect(chart.locator('canvas').first()).toBeVisible();
-    await page.getByRole('button', { name: /Settings/ }).click();
+    await page.getByRole('button', { name: 'Theme', exact: true }).click();
     await page.getByRole('radio', { name: 'Glass Light' }).check();
     await expect(chart).toHaveCSS('background-color', 'rgb(252, 253, 255)');
     await expect(page.locator('.theme-option').first()).toHaveCSS(
@@ -70,6 +88,16 @@ for (const width of [375, 1440]) {
     await expect(
       page.getByRole('radio', { name: 'Soft Clay', exact: true }),
     ).toBeChecked();
+    await page
+      .getByRole('radio', { name: 'Soft Clay', exact: true })
+      .press('Escape');
+    await expect(page.locator('#theme-menu')).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Theme', exact: true }),
+    ).toBeFocused();
+    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.locator('.app-header').click({ position: { x: 1, y: 1 } });
+    await expect(page.locator('#theme-menu')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 }
