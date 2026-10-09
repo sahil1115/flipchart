@@ -9,6 +9,13 @@ for (const width of [375, 1440]) {
     await page.getByRole('button', { name: /Try Demo/ }).click();
     const chart = page.getByTestId('price-chart');
     await expect(chart.locator('canvas').first()).toBeVisible();
+    // Native indicator panes finish laying out after the first canvas appears.
+    await chart.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    );
     const canvases = await chart.locator('canvas').count();
     await page.getByRole('button', { name: /Settings/ }).click();
     for (const [name, id, background] of [

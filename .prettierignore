@@ -3,5 +3,4 @@ dist
 package-lock.json
 test-results
 playwright-report
-docs/FlipChart_Implementation_Plan.md
 dist-subpath

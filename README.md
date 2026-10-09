@@ -1,6 +1,6 @@
 # FlipChart
 
-**Version: v0.1.0**
+**Version: [v0.1.1](https://github.com/sahil1115/flipchart/releases/tag/v0.1.1)**
 
 FlipChart is a stock-chart dashboard that runs in your browser. Explore prices, volume, and 15 technical indicators using demo data, your own CSV files, or a market-data API.
 
@@ -32,7 +32,7 @@ Imported datasets and dashboard preferences stay in this browser when storage is
 ## Connect market data
 
 1. Get your own API key from [Twelve Data](https://twelvedata.com/) or [Alpha Vantage](https://www.alphavantage.co/support/#api-key).
-2. Open Settings and choose your provider.
+2. Open **Data connection** and choose your provider.
 3. Enter the key and select **Use key**.
 4. Optionally test the connection, then search for a listing and load its history.
 
@@ -47,7 +47,7 @@ npm run build
 npm run preview
 ```
 
-Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The `dist/` folder can be deployed to static hosting; see [deployment instructions](docs/deployment.md).
+Open [http://127.0.0.1:4173](http://127.0.0.1:4173). Deploy the complete `dist/` folder to static hosting over HTTPS. For hosting under a repository path, set `FLIPCHART_BASE` to that path (for example, `/flipchart/`) before building.
 
 The production app supports offline reopening of demo and imported data after an initial online visit. Provider requests require internet access, and live provider data is kept only for the current session. Installation is optional and depends on browser support.
 
@@ -67,12 +67,9 @@ npm run test:subpath
 
 ## More information
 
-- [Calculation details](docs/calculations.md)
-- [CSV and data format](docs/data-contract.md)
-- [Provider setup and limitations](docs/providers.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
-- [Changelog](CHANGELOG.md)
+- [Versions and release notes](https://github.com/sahil1115/flipchart/releases)
 
 ## Contributor
 

@@ -13,3 +13,5 @@ Keep calculation modules pure, dated null outputs aligned, formulas documented a
 Use semantic theme tokens and the shared chart library. Test changed workflows at narrow/desktop widths and with keyboard controls. Provider, deployment and browser claims need dated official sources and evidence. Report unavailable real-key/device checks rather than claiming them. Run `npm run notices` after dependency changes and include the updated lockfile and notices. Keep the service worker's exact app-asset allowlist; never add provider runtime caching or a key proxy.
 
 Describe the behavior changed, its reason, validation and remaining limitations in pull requests. Do not publish externally as part of a routine contribution without maintainer authorization.
+
+For each release, update the version in `package.json`, `package-lock.json`, and the README, create a matching `vX.Y.Z` Git tag, and publish a GitHub release describing the changes. Keep version updates in GitHub release notes.
