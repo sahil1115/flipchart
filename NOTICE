@@ -1,0 +1,5 @@
+FlipChart uses TradingView Lightweight Charts™
+Copyright (с) 2025 TradingView, Inc. https://www.tradingview.com/
+Distributed under the Apache License, Version 2.0.
+The dependency's full license is included in node_modules/lightweight-charts/LICENSE.
+Visible attribution and a TradingView link are retained in the application.

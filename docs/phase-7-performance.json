@@ -1,0 +1,206 @@
+{
+  "baseline": [
+    {
+      "candles": 5000,
+      "panels": "Price/SMA, volume/SMA, RSI, MACD, ATR",
+      "engine": "chromium",
+      "browser": "143.0.7499.4",
+      "os": "win32",
+      "osRelease": "10.0.26200",
+      "cpu": "13th Gen Intel(R) Core(TM) i3-1315U",
+      "logicalCpus": 8,
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "timings": {
+        "validateAndLoadMs": 873,
+        "parameterApplyMs": 367.5,
+        "rangeChangeMs": 144.29999995231628,
+        "panMs": 244.29999995231628,
+        "zoomMs": 105.70000004768372,
+        "exportMs": 869.2999999523163
+      },
+      "parameterRenderSamples": [
+        {
+          "durationMs": 210.89999985694885,
+          "longTasksMs": [147, 58],
+          "longTaskSupported": true
+        },
+        {
+          "durationMs": 211.29999995231628,
+          "longTasksMs": [147, 63],
+          "longTaskSupported": true
+        },
+        {
+          "durationMs": 221.20000004768372,
+          "longTasksMs": [150, 70],
+          "longTaskSupported": true
+        }
+      ],
+      "method": "Production preview; browser performance.now intervals include Playwright actionability and two animation frames. Three additional direct DOM parameter clicks measure processing plus two frames without driver actionability. Long Task API recorded only where supported. Unthrottled observations, not benchmarks."
+    },
+    {
+      "candles": 5000,
+      "panels": "Price/SMA, volume/SMA, RSI, MACD, ATR",
+      "engine": "firefox",
+      "browser": "157.0",
+      "os": "win32",
+      "osRelease": "10.0.26200",
+      "cpu": "13th Gen Intel(R) Core(TM) i3-1315U",
+      "logicalCpus": 8,
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "timings": {
+        "validateAndLoadMs": 1005,
+        "parameterApplyMs": 886,
+        "rangeChangeMs": 242,
+        "panMs": 110,
+        "zoomMs": 72,
+        "exportMs": 634
+      },
+      "parameterRenderSamples": [
+        {
+          "durationMs": 362,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        },
+        {
+          "durationMs": 395,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        },
+        {
+          "durationMs": 379,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        }
+      ],
+      "method": "Production preview; browser performance.now intervals include Playwright actionability and two animation frames. Three additional direct DOM parameter clicks measure processing plus two frames without driver actionability. Long Task API recorded only where supported. Unthrottled observations, not benchmarks."
+    }
+  ],
+  "optimized": [
+    {
+      "candles": 5000,
+      "panels": "Price/SMA, volume/SMA, RSI, MACD, ATR",
+      "engine": "chromium",
+      "browser": "143.0.7499.4",
+      "os": "win32",
+      "osRelease": "10.0.26200",
+      "cpu": "13th Gen Intel(R) Core(TM) i3-1315U",
+      "logicalCpus": 8,
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "timings": {
+        "validateAndLoadMs": 775.5999999046326,
+        "parameterApplyMs": 316,
+        "rangeChangeMs": 127.79999995231628,
+        "panMs": 233.39999985694885,
+        "zoomMs": 117.70000004768372,
+        "exportMs": 579
+      },
+      "parameterRenderSamples": [
+        {
+          "durationMs": 169.5,
+          "longTasksMs": [129],
+          "longTaskSupported": true
+        },
+        {
+          "durationMs": 185.70000004768372,
+          "longTasksMs": [134],
+          "longTaskSupported": true
+        },
+        {
+          "durationMs": 171.19999980926514,
+          "longTasksMs": [124],
+          "longTaskSupported": true
+        }
+      ],
+      "method": "Production preview; browser performance.now intervals include Playwright actionability and two animation frames. Three additional direct DOM parameter clicks measure processing plus two frames without driver actionability. Long Task API recorded only where supported. Unthrottled observations, not benchmarks."
+    },
+    {
+      "candles": 5000,
+      "panels": "Price/SMA, volume/SMA, RSI, MACD, ATR",
+      "engine": "firefox",
+      "browser": "157.0",
+      "os": "win32",
+      "osRelease": "10.0.26200",
+      "cpu": "13th Gen Intel(R) Core(TM) i3-1315U",
+      "logicalCpus": 8,
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "timings": {
+        "validateAndLoadMs": 1015,
+        "parameterApplyMs": 518,
+        "rangeChangeMs": 261,
+        "panMs": 126,
+        "zoomMs": 74,
+        "exportMs": 481
+      },
+      "parameterRenderSamples": [
+        {
+          "durationMs": 245,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        },
+        {
+          "durationMs": 228,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        },
+        {
+          "durationMs": 282,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        }
+      ],
+      "method": "Production preview; browser performance.now intervals include Playwright actionability and two animation frames. Three additional direct DOM parameter clicks measure processing plus two frames without driver actionability. Long Task API recorded only where supported. Unthrottled observations, not benchmarks."
+    },
+    {
+      "candles": 5000,
+      "panels": "Price/SMA, volume/SMA, RSI, MACD, ATR",
+      "engine": "webkit",
+      "browser": "27.2",
+      "os": "win32",
+      "osRelease": "10.0.26200",
+      "cpu": "13th Gen Intel(R) Core(TM) i3-1315U",
+      "logicalCpus": 8,
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "timings": {
+        "validateAndLoadMs": 1819,
+        "parameterApplyMs": 968,
+        "rangeChangeMs": 818,
+        "panMs": 714,
+        "zoomMs": 424,
+        "exportMs": 936
+      },
+      "parameterRenderSamples": [
+        {
+          "durationMs": 318,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        },
+        {
+          "durationMs": 513,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        },
+        {
+          "durationMs": 227,
+          "longTasksMs": [],
+          "longTaskSupported": false
+        }
+      ],
+      "method": "Production preview; browser performance.now intervals include Playwright actionability and two animation frames. Three additional direct DOM parameter clicks measure processing plus two frames without driver actionability. Long Task API recorded only where supported. Unthrottled observations, not benchmarks."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+.env*
+!.env.example
+*.tsbuildinfo
+verification/screenshots/
+verification/reference-tooling/
+
+dist-subpath/
