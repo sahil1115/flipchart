@@ -1085,3 +1085,166 @@ button:disabled {
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
+
+.theme-picker {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.theme-picker legend {
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-text);
+}
+.theme-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  box-shadow: var(--control-shadow);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.theme-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.theme-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: var(--inset-shadow);
+  color: var(--accent);
+}
+.theme-option:has(input:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.theme-swatch {
+  width: 42px;
+  height: 32px;
+  border: 1px solid;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.theme-swatch span {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+html[data-theme$='clay'] .glass-panel {
+  backdrop-filter: none;
+  background: var(--surface-opaque);
+  border-color: transparent;
+}
+html[data-theme$='clay'] .app-header {
+  min-height: 88px;
+}
+html[data-theme$='clay'] .workspace-heading {
+  padding: 28px 0 24px;
+}
+html[data-theme$='clay'] .brand-mark,
+html[data-theme$='clay'] .ticker-icon,
+html[data-theme$='clay'] .entry-icon {
+  box-shadow: var(--control-shadow);
+}
+html[data-theme$='clay'] button,
+html[data-theme$='clay'] select {
+  box-shadow: var(--control-shadow);
+  background: var(--surface-opaque);
+}
+html[data-theme$='clay'] button:hover {
+  background: var(--accent-soft);
+}
+html[data-theme$='clay'] button.primary,
+html[data-theme$='clay'] button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+  box-shadow: var(--pressed-shadow);
+}
+html[data-theme$='clay'] button:active:not(:disabled) {
+  box-shadow: var(--inset-shadow);
+}
+html[data-theme$='clay'] input:not([type='checkbox'], [type='radio']),
+html[data-theme$='clay'] .range-buttons,
+html[data-theme$='clay'] .welcome-art {
+  box-shadow: var(--inset-shadow);
+  background: var(--surface-opaque);
+}
+html[data-theme$='clay'] .chart-panel,
+html[data-theme$='clay'] .indicators-panel {
+  padding: 20px;
+}
+html[data-theme$='clay'] .chart-legend {
+  border-bottom: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: var(--inset-shadow);
+}
+html[data-theme$='clay'] .price-chart {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+html[data-theme$='clay'] .indicator-card {
+  border-color: transparent;
+  border-radius: 16px;
+  box-shadow: var(--control-shadow);
+}
+html[data-theme$='clay'] .indicator-card h3 {
+  font-size: 14px;
+}
+html[data-theme$='clay'] .panel-actions button {
+  padding: 6px 10px;
+  min-height: 36px;
+  font-size: 11px;
+}
+html[data-theme][data-reduced-effects='true']
+  :is(
+    .glass-panel,
+    button,
+    select,
+    input,
+    .theme-option,
+    .range-buttons,
+    .welcome-art,
+    .brand-mark,
+    .ticker-icon,
+    .entry-icon,
+    .chart-legend,
+    .indicator-card
+  ) {
+  box-shadow: none;
+}
+html[data-theme$='clay'][data-reduced-effects='true']
+  :is(.glass-panel, .indicator-card) {
+  border-color: var(--border);
+}
+@media (max-width: 600px) {
+  .theme-option {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 6px;
+    text-align: center;
+    font-size: 11px;
+  }
+  html[data-theme$='clay'] .chart-panel,
+  html[data-theme$='clay'] .indicators-panel {
+    padding: 16px 12px;
+  }
+}

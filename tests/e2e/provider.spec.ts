@@ -164,7 +164,7 @@ for (const width of [375, 768, 1440]) {
       page.getByRole('article', { name: 'RSI 7', exact: true }),
     ).toContainText('Latest valid');
     await page.getByRole('button', { name: /Settings/ }).click();
-    await page.getByLabel('Reduce glass effects').check();
+    await page.getByLabel('Reduce visual effects').check();
     await page.getByLabel('Interval', { exact: true }).selectOption('weekly');
     await expect(
       page.getByRole('region', { name: 'Dataset summary' }),

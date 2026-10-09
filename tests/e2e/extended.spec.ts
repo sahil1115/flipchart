@@ -42,7 +42,7 @@ for (const width of [375, 768, 1440])
     await page.getByRole('checkbox', { name: 'ROC 12', exact: true }).check();
     await expect(roc.locator('strong')).toHaveText(value!);
     await page.getByRole('button', { name: /Settings/ }).click();
-    await page.getByLabel('Reduce glass effects').check();
+    await page.getByLabel('Reduce visual effects').check();
     await expect(roc.locator('strong')).toHaveText(value!);
     await page.getByLabel('Interval', { exact: true }).selectOption('weekly');
     await expect(

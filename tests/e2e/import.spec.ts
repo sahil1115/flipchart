@@ -92,7 +92,7 @@ for (const width of [375, 768, 1440]) {
     await page.getByLabel('Chart view').selectOption('line');
     await page.getByRole('button', { name: 'All', exact: true }).click();
     await page.getByRole('button', { name: /Settings/ }).click();
-    await page.getByLabel('Reduce glass effects').check();
+    await page.getByLabel('Reduce visual effects').check();
     await page.reload();
     await expect(
       page.getByRole('region', { name: 'Dataset summary' }),
@@ -184,7 +184,7 @@ test('cache deletion and preference reset have independent scopes', async ({
   await page.getByLabel('Chart view').selectOption('area');
   await page.getByRole('button', { name: '1Y', exact: true }).click();
   await page.getByRole('button', { name: /Settings/ }).click();
-  await page.getByLabel('Reduce glass effects').check();
+  await page.getByLabel('Reduce visual effects').check();
   await page
     .getByRole('button', { name: 'Reset Preferences', exact: true })
     .click();

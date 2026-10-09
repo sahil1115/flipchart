@@ -27,6 +27,32 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
 });
+it('switches and restores themes without dropping the active dataset', async () => {
+  const view = render(
+    <App
+      repository={repository()}
+      demoLoader={async () => createDemoDataset('2026-10-09T00:00:00Z')}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: /Try Demo/ }));
+  expect(await screen.findByText('Chart ready')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: /Settings/ }));
+  fireEvent.click(screen.getByRole('radio', { name: 'Soft Clay' }));
+  expect(document.documentElement).toHaveAttribute('data-theme', 'soft-clay');
+  expect(screen.getByText('Chart ready')).toBeVisible();
+  fireEvent.click(screen.getByRole('radio', { name: 'Midnight Clay' }));
+  expect(document.documentElement.style.colorScheme).toBe('dark');
+  view.unmount();
+  render(<App repository={repository()} />);
+  fireEvent.click(screen.getByRole('button', { name: /Settings/ }));
+  expect(screen.getByRole('radio', { name: 'Midnight Clay' })).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'Reset Preferences' }));
+  expect(screen.getByRole('radio', { name: 'Glass Light' })).toBeChecked();
+  expect(document.documentElement.style.colorScheme).toBe('light');
+  expect(
+    document.documentElement.style.getPropertyValue('--inset-shadow'),
+  ).toBe('none');
+});
 it('shows explicit initial, loading and empty states', async () => {
   const dataset = createDemoDataset('2026-10-09T00:00:00Z');
   let finish: (value: typeof dataset) => void = () => {};

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added Soft Clay and Midnight Clay themes with raised controls, inset surfaces, matching chart palettes, and a saved theme picker.
+- Extended reduced visual effects to disable decorative shadows across themes.
+
 ## v0.1.0 — 2026-10-09
 
 - Browser-first React/TypeScript workspace with Glass Light, responsive charts and reduced effects.

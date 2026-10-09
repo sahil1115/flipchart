@@ -101,7 +101,7 @@ for (const width of [375, 768, 1440])
       .click();
     await expect(card.locator('strong')).toHaveText(latest!);
     await page.getByRole('button', { name: /Settings/ }).click();
-    await page.getByLabel('Reduce glass effects').check();
+    await page.getByLabel('Reduce visual effects').check();
     await expect(chart.locator('canvas')).toHaveCount(count);
     await chart.scrollIntoViewIfNeeded();
     const bounds = await chart.boundingBox();

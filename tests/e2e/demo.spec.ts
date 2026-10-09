@@ -68,7 +68,7 @@ for (const width of [375, 768, 1440]) {
       fullPage: true,
     });
     await page.getByRole('button', { name: /Settings/ }).click();
-    await page.getByLabel('Reduce glass effects').check();
+    await page.getByLabel('Reduce visual effects').check();
     await expect(page.locator('html')).toHaveAttribute(
       'data-reduced-effects',
       'true',
@@ -184,7 +184,7 @@ test('opaque base styling remains usable when the backdrop support rule is absen
       .evaluate((element) => getComputedStyle(element).backdropFilter),
   ).toBe('none');
   await page.getByRole('button', { name: /Settings/ }).click();
-  await page.getByLabel('Reduce glass effects').check();
+  await page.getByLabel('Reduce visual effects').check();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute(
     'data-reduced-effects',

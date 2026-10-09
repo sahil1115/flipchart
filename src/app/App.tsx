@@ -4,7 +4,7 @@ import { GlassPanel } from '../components/GlassPanel';
 import type { Dataset } from '../data/types';
 import { loadDemo } from '../demo/load';
 import { useWorkspace } from '../state/workspace';
-import { applyTheme, resolveTheme } from '../themes/themes';
+import { applyTheme, resolveTheme, themes } from '../themes/themes';
 import {
   readThemePreference,
   writeThemePreference,
@@ -259,6 +259,39 @@ export function App({
             <h2>Appearance</h2>
             <p>{theme.name} · calm surfaces, clear charts</p>
           </div>
+          <fieldset className="theme-picker">
+            <legend>Theme</legend>
+            {Object.values(themes).map((option) => (
+              <label className="theme-option" key={option.id}>
+                <input
+                  type="radio"
+                  name="theme"
+                  value={option.id}
+                  checked={preference.themeId === option.id}
+                  onChange={() => {
+                    const next = { ...preference, themeId: option.id };
+                    setPreference(next);
+                    setPreferenceWarning(
+                      writeThemePreference(next)
+                        ? ''
+                        : 'Browser storage is unavailable. Appearance applies for this session.',
+                    );
+                  }}
+                />
+                <span
+                  className="theme-swatch"
+                  aria-hidden="true"
+                  style={{
+                    background: option.css['--surface-opaque'],
+                    borderColor: option.css['--border'],
+                  }}
+                >
+                  <span style={{ background: option.css['--accent'] }} />
+                </span>
+                {option.name}
+              </label>
+            ))}
+          </fieldset>
           <label className="checkbox-label">
             <input
               type="checkbox"
@@ -276,7 +309,7 @@ export function App({
                 );
               }}
             />{' '}
-            Reduce glass effects
+            Reduce visual effects
           </label>
           <div className="storage-controls">
             <div>
