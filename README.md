@@ -74,6 +74,10 @@ npm run test:subpath
 - [Security](SECURITY.md)
 - [Changelog](CHANGELOG.md)
 
+## Contributor
+
+Created and maintained by [Sahil (@sahil1115)](https://github.com/sahil1115).
+
 ## License
 
 FlipChart is [MIT licensed](LICENSE). Charts use [TradingView Lightweight Charts](https://github.com/tradingview/lightweight-charts); third-party notices are included in the app. Market data remains subject to the provider's terms.
