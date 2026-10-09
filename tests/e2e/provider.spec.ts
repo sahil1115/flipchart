@@ -86,6 +86,7 @@ async function connect(page: Page, remember = false) {
   await page.getByRole('button', { name: 'Use key', exact: true }).click();
 }
 async function chooseListing(page: Page, exchange = 'NASDAQ') {
+  await page.getByLabel('Search symbol or company').fill('');
   await page.getByLabel('Search symbol or company').fill('FI');
   await page
     .getByRole('button', { name: new RegExp(`FIX · ${exchange}`) })
@@ -126,6 +127,7 @@ for (const width of [375, 768, 1440]) {
     await page.keyboard.press('/');
     await expect(page.getByLabel('Search symbol or company')).toBeFocused();
     await chooseListing(page);
+    await expect(page.locator('.provider-results > li')).toHaveCount(2);
     expect(fixture.requests.map((url) => url.pathname)).toEqual([
       '/api_usage',
       '/symbol_search',
@@ -134,6 +136,18 @@ for (const width of [375, 768, 1440]) {
       .getByRole('button', { name: 'Load history', exact: true })
       .click();
     await loaded(page);
+    await expect(page.locator('.provider-results > li')).toHaveCount(1);
+    await expect(page.locator('.provider-results')).toContainText(
+      'FIX · NASDAQ',
+    );
+    await expect(page.locator('.provider-results')).not.toContainText(
+      'FIX · LSE',
+    );
+    if (width === 1440) {
+      await page.locator('.provider-results').screenshot({
+        path: 'verification/screenshots/selected-stock-results.png',
+      });
+    }
     await expect(page.locator('footer')).toContainText(
       'Fetched from provider:',
     );
@@ -220,9 +234,12 @@ test('exchange selection separates caches; failed refresh preserves the chart an
   await expect(
     page.getByRole('region', { name: 'Dataset summary' }),
   ).not.toContainText('Stale loaded data');
-  await page.getByRole('button', { name: /FIX · LSE/ }).click();
+  await chooseListing(page, 'LSE');
+  await expect(page.locator('.provider-results > li')).toHaveCount(2);
   await page.getByRole('button', { name: 'Load history', exact: true }).click();
   await loaded(page, 'GBP');
+  await expect(page.locator('.provider-results > li')).toHaveCount(1);
+  await expect(page.locator('.provider-results')).toContainText('FIX · LSE');
   expect(fixture.requests.at(-1)!.searchParams.get('mic_code')).toBe('XLON');
   await expect(page.locator('footer')).toContainText('Europe/London');
   expect(fixture.errors).toEqual([]);
@@ -244,6 +261,7 @@ for (const [failure, message] of [
       .getByRole('button', { name: 'Load history', exact: true })
       .click();
     await expect(page.getByRole('alert')).toContainText(message);
+    await expect(page.locator('.provider-results > li')).toHaveCount(1);
     await expect(page.getByRole('alert')).not.toContainText(fixtureCredential);
     await expect(page.getByTestId('price-chart')).toHaveCount(0);
     expect(fixture.requests).toHaveLength(2);
@@ -327,6 +345,7 @@ test('cancelled slow history cannot replace demo selected afterward', async ({
   );
   await page.getByRole('button', { name: 'Load history', exact: true }).click();
   await expect.poll(() => fixture.requests.length).toBe(2);
+  await expect(page.locator('.provider-results > li')).toHaveCount(1);
   await page.getByRole('button', { name: 'Cancel provider request' }).click();
   await page.getByRole('button', { name: 'Close connection panel' }).click();
   await page.getByRole('button', { name: /Try Demo/ }).click();

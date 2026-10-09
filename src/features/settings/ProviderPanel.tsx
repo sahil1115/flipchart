@@ -63,6 +63,7 @@ export function ProviderPanel({
   const [query, setQuery] = useState(''),
     [results, setResults] = useState<Listing[]>([]),
     [selected, setSelected] = useState<Listing | null>(null);
+  const [searchCollapsed, setSearchCollapsed] = useState(false);
   const [searchStatus, setSearchStatus] = useState(''),
     [searchError, setSearchError] = useState(''),
     [error, setError] = useState('');
@@ -76,7 +77,8 @@ export function ProviderPanel({
     operation = useRef(0),
     searchGeneration = useRef(0);
   useEffect(() => {
-    if (!open || !connected || query.trim().length < 2) return;
+    if (!open || !connected || searchCollapsed || query.trim().length < 2)
+      return;
     const generation = ++searchGeneration.current;
     const timer = setTimeout(() => {
       setSearchStatus('Searching Twelve Data…');
@@ -106,7 +108,7 @@ export function ProviderPanel({
       searchGeneration.current = generation + 1;
       session.cancelSearch();
     };
-  }, [open, connected, query, session, providerName]);
+  }, [open, connected, query, session, providerName, searchCollapsed]);
   useEffect(() => {
     if (!open) return;
     const shortcut = (event: KeyboardEvent) => {
@@ -161,6 +163,16 @@ export function ProviderPanel({
     const live = activeDataset?.metadata.mode === 'live' ? activeDataset : null;
     const listing = refresh ? live?.metadata.listing : selected;
     if (!listing) return;
+    if (!refresh) {
+      searchGeneration.current++;
+      session.cancelSearch();
+      setSearchCollapsed(true);
+      setResults([listing]);
+      setSearchStatus(
+        'Showing selected stock. Search again to choose another listing.',
+      );
+      setSearchError('');
+    }
     const baseRequest =
       refresh && live?.metadata.requestedRange
         ? {
@@ -444,6 +456,7 @@ export function ProviderPanel({
             value={query}
             onChange={(event) => {
               if (busy) cancel();
+              setSearchCollapsed(false);
               setQuery(event.target.value);
               setResults([]);
               setSelected(null);

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Load history collapses provider search matches to the selected stock; editing the search restores matching listings.
 - Added Soft Clay and Midnight Clay themes with raised controls, inset surfaces, matching chart palettes, and a saved theme picker.
 - Extended reduced visual effects to disable decorative shadows across themes.
 
