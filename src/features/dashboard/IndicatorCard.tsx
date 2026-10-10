@@ -2,6 +2,7 @@ import type { Candle, TradingDate } from '../../data/types';
 import type { Dataset } from '../../data/types';
 import type { IndicatorDefinition } from '../../indicators/presentation';
 import { latestValue } from '../../indicators/core';
+import { formatValue, valueUnit } from './readout';
 export function IndicatorCard({
   item,
   candles,
@@ -12,6 +13,7 @@ export function IndicatorCard({
   expanded = false,
   onCollapse,
   onExpand,
+  onToggle,
 }: {
   item: IndicatorDefinition;
   candles: Candle[];
@@ -22,6 +24,7 @@ export function IndicatorCard({
   expanded?: boolean;
   onCollapse?: () => void;
   onExpand?: () => void;
+  onToggle?: (checked: boolean) => void;
 }) {
   const cursorIndex = cursor
     ? candles.findIndex((bar) => bar.time === cursor)
@@ -32,21 +35,34 @@ export function IndicatorCard({
       className={`indicator-card${expanded ? ' expanded' : ''}`}
       aria-label={item.name}
     >
-      <h3>{item.name}</h3>
+      <h3>
+        {onToggle ? (
+          <label>
+            <input
+              type="checkbox"
+              checked
+              onChange={(event) => onToggle(event.target.checked)}
+            />
+            {item.name}
+          </label>
+        ) : (
+          item.name
+        )}
+      </h3>
       <div className="panel-actions">
         <button
           aria-label={`${collapsed ? 'Show' : 'Collapse'} ${item.name} details`}
           aria-expanded={!collapsed}
           onClick={onCollapse}
         >
-          {collapsed ? 'Show details' : 'Collapse'}
+          {collapsed ? '⌄' : '⌃'}
         </button>
         <button
           aria-label={`${expanded ? 'Restore' : 'Expand'} ${item.name} panel`}
           aria-pressed={expanded}
           onClick={onExpand}
         >
-          {expanded ? 'Restore' : 'Expand'}
+          {expanded ? '−' : '+'}
         </button>
       </div>
       <div hidden={collapsed}>
@@ -91,14 +107,25 @@ export function IndicatorCard({
               <div key={series.name}>
                 <dt>{series.name}</dt>
                 <dd>
-                  <strong>
+                  <strong
+                    title={
+                      value
+                        ? value.value.toLocaleString('en-US', {
+                            maximumFractionDigits:
+                              item.units === 'volume' ? 0 : 8,
+                          })
+                        : reason
+                    }
+                  >
                     {value
-                      ? value.value.toLocaleString('en-US', {
-                          maximumFractionDigits:
-                            item.units === 'volume' ? 0 : 4,
-                        })
+                      ? formatValue(value.value, item.units)
                       : 'Unavailable'}
                   </strong>
+                  {value && (
+                    <span className="readout-unit">
+                      {valueUnit(item.units, currency)}
+                    </span>
+                  )}
                   <span className="small">
                     {value
                       ? `${cursor ? 'Cursor' : 'Latest valid'} · ${value.time}${!cursor && value.time !== latest ? ' · earlier than latest candle' : ''}`

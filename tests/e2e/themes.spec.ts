@@ -37,7 +37,7 @@ for (const width of [375, 1440]) {
         );
         await expect(
           page.locator('.indicator-card').first().locator('h3'),
-        ).toHaveCSS('color', 'rgb(241, 243, 241)');
+        ).toHaveCSS('color', 'rgb(36, 40, 43)');
       }
       expect(
         await page.evaluate(

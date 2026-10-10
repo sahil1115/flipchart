@@ -1154,8 +1154,7 @@ html[data-theme='frosted-mono'] .brand-mark,
 html[data-theme='frosted-mono'] .entry-icon {
   border-radius: 50%;
 }
-html[data-theme='frosted-mono'] .summary,
-html[data-theme='frosted-mono'] .indicator-card:nth-child(odd) {
+html[data-theme='frosted-mono'] .summary-price {
   --text: #f1f3f1;
   --muted-text: #ccd3d1;
   --accent: #edf1e8;
@@ -1382,4 +1381,634 @@ html[data-theme$='clay'][data-reduced-effects='true']
   html[data-theme$='clay'] .indicators-panel {
     padding: 16px 12px;
   }
+}
+
+/* Compact split workspace: chart shapes and their values stay together. */
+.has-dataset {
+  max-width: 1520px;
+  padding: 0 24px;
+}
+.has-dataset .app-header {
+  min-height: 68px;
+  gap: 16px;
+}
+.has-dataset .brand {
+  font-size: 21px;
+}
+.has-dataset .brand-mark {
+  width: 32px;
+  height: 32px;
+  font-size: 23px;
+}
+.has-dataset .brand-caption {
+  display: none;
+}
+.has-dataset .workspace-heading {
+  padding: 0;
+  height: 0;
+  overflow: hidden;
+}
+.has-dataset .app-header button {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.workspace-summary.summary {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
+  margin: 20px 0 16px;
+}
+.listing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.listing-header h2 {
+  font-family: Georgia, serif;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.8px;
+}
+.listing-header h2 > span {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-left: 10px;
+}
+.listing-provenance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.listing-provenance button {
+  min-height: 30px;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+.summary-strip {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 2.2fr;
+  gap: 12px;
+}
+.coverage-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-width: 0;
+}
+.metric-card {
+  padding: 16px 18px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.metric-card strong {
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.metric-card .small {
+  font-size: 10px;
+  line-height: 1.45;
+}
+.metric-card .metric-label {
+  font-size: 10px;
+  letter-spacing: 0.6px;
+}
+.summary-price.metric-card > strong {
+  font-family: Georgia, serif;
+  font-size: 36px;
+  font-weight: 400;
+  letter-spacing: -1.2px;
+}
+.coverage-track {
+  height: 2px;
+  background: var(--border);
+  position: relative;
+  margin: 5px 4px;
+}
+.coverage-track span {
+  width: 2px;
+  height: 9px;
+  background: var(--text);
+  position: absolute;
+  top: -3px;
+}
+.focus-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
+.focus-workspace .chart-panel {
+  padding: 16px;
+  position: sticky;
+  top: 16px;
+  border-radius: 20px;
+}
+.focus-workspace .chart-heading {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.focus-workspace .chart-heading h2 {
+  font-size: 14px;
+}
+.focus-workspace .chart-heading p {
+  font-size: 10px;
+}
+.focus-workspace button,
+.focus-workspace select {
+  min-height: 30px;
+  font-size: 11px;
+  border-radius: 8px;
+}
+.focus-workspace .chart-controls label {
+  font-size: 10px;
+  gap: 6px;
+}
+.focus-workspace select {
+  padding: 4px 24px 4px 8px;
+}
+.focus-workspace .chart-toolbar {
+  padding: 12px 0;
+}
+.focus-workspace .range-buttons {
+  padding: 2px;
+  gap: 2px;
+}
+.focus-workspace .range-buttons button {
+  padding: 3px 10px;
+  min-height: 28px;
+}
+.overlay-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.overlay-chips button {
+  border-radius: 20px;
+  background: transparent;
+  padding: 3px 12px;
+  min-height: 28px;
+}
+.overlay-chips button::before {
+  content: '';
+  width: 12px;
+  height: 0;
+  border-top: 2px solid var(--accent);
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.overlay-chips button:nth-of-type(2)::before {
+  border-top-style: dashed;
+}
+.overlay-chips button:nth-of-type(3)::before {
+  border-top-style: dotted;
+}
+.overlay-chips button[aria-pressed='false'] {
+  opacity: 0.65;
+}
+.overlay-chips button[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+.pane-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 6px 0 10px;
+}
+.pane-selector button {
+  padding: 3px 8px;
+  min-height: 28px;
+  background: transparent;
+  border-color: transparent;
+}
+.pane-selector button[aria-pressed='true'] {
+  background: var(--text);
+  color: var(--surface-opaque);
+  border-color: var(--text);
+}
+.focus-workspace .chart-legend {
+  padding: 8px 10px;
+  gap: 6px 12px;
+  font-size: 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.inspection-mode {
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+.inspection-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.inspection-actions button {
+  min-height: 26px;
+  padding: 2px 7px;
+  background: transparent;
+  font-size: 10px;
+}
+.focus-workspace .price-chart {
+  border: 0;
+  border-radius: 10px;
+  background: var(--plot);
+}
+.focus-workspace .chart-footnote {
+  padding: 10px 0 0;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 10px;
+}
+.readout-rail {
+  min-width: 0;
+}
+.readout-heading {
+  padding: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-opaque);
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+.readout-heading h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  gap: 8px;
+}
+.readout-heading p {
+  margin-top: 5px;
+  font-size: 10px;
+}
+.focus-workspace .inspecting {
+  --text: #f5f3ee;
+  --muted-text: #d1cec8;
+  --border: #605c55;
+  --surface-opaque: #282723;
+  color: var(--text);
+  background: #282723;
+}
+.focus-workspace .inspecting button {
+  color: var(--text);
+}
+.focus-workspace .inspecting .badge {
+  color: #f5f3ee;
+  background: #9b5833;
+  border-color: #bd794f;
+}
+html[data-theme='midnight-clay'] .focus-workspace .inspecting {
+  --text: #292722;
+  --muted-text: #625d54;
+  --border: #b5aea3;
+  --surface-opaque: #f1ede5;
+  color: var(--text);
+  background: #f1ede5;
+}
+.focus-workspace .indicators-panel {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.readout-group {
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.readout-group > h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 650;
+  margin: 2px 0 8px;
+}
+.readout-group > h3 > span {
+  color: var(--muted-text);
+  margin-left: 5px;
+  font-weight: 400;
+}
+.readout-group .indicator-cards {
+  display: block;
+  margin: 0;
+}
+.readout-group .indicator-card {
+  position: relative;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 0;
+  box-shadow: none;
+}
+.readout-group .indicator-card h3 {
+  font-size: 11px;
+  margin: 0 54px 5px 0;
+}
+.readout-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.readout-group input {
+  accent-color: var(--accent);
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.readout-group .panel-actions {
+  position: absolute;
+  right: 0;
+  top: 3px;
+  display: flex;
+  gap: 3px;
+}
+.readout-group .panel-actions button {
+  border: none;
+  min-height: 24px;
+  width: 24px;
+  padding: 0;
+  font-size: 15px;
+  background: transparent;
+}
+.readout-group .indicator-card > div:not(.panel-actions) > p {
+  font-size: 9px;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+.readout-group .indicator-card dl {
+  margin: 0;
+}
+.readout-group .indicator-card dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  gap: 8px;
+  align-items: baseline;
+  margin: 4px 0;
+}
+.readout-group .indicator-card dt {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.readout-group .indicator-card dd {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.readout-group .indicator-card dd strong {
+  display: inline;
+  font-size: 12px;
+  font-weight: 600;
+}
+.readout-group .indicator-card dd .readout-unit {
+  display: inline;
+  margin-left: 4px;
+  font-size: 9px;
+  color: var(--muted-text);
+}
+.readout-group .indicator-card dd .small {
+  font-size: 9px;
+  line-height: 1.4;
+  margin-top: 1px;
+  overflow-wrap: anywhere;
+}
+.readout-group .indicator-card summary {
+  font-size: 10px;
+  padding: 2px 0;
+}
+.readout-group .indicator-card details p {
+  font-size: 10px;
+}
+.readout-group .indicator-card.expanded {
+  padding: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+.readout-group .disabled-indicator {
+  font-size: 11px;
+  padding: 8px 0;
+  color: var(--muted-text);
+  border-top: 1px solid var(--border);
+}
+.calculation-settings {
+  padding: 16px;
+  margin-top: 16px;
+  border-radius: 16px;
+}
+.calculation-settings .indicator-controls > p {
+  font-size: 11px;
+}
+.calculation-settings > button {
+  min-height: 30px;
+  font-size: 11px;
+  margin-top: 8px;
+}
+.has-dataset .export-panel,
+.has-dataset .recent-panel {
+  padding: 18px;
+  border-radius: 16px;
+  margin: 16px 0;
+}
+.has-dataset .dataset-note {
+  font-size: 11px;
+}
+html[data-theme='frosted-mono'] .readout-group .indicator-card {
+  border-radius: 0;
+  box-shadow: none;
+}
+@media (max-width: 1139px) {
+  .focus-workspace {
+    grid-template-columns: 1fr;
+  }
+  .focus-workspace .chart-panel {
+    position: static;
+  }
+  .focus-workspace .indicators-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .readout-group {
+    margin: 0;
+  }
+  .summary-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .coverage-strip {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 699px) {
+  .focus-workspace {
+    --price-pane-height: 236px;
+  }
+  .has-dataset {
+    padding: 0 12px;
+  }
+  .has-dataset .app-header {
+    gap: 10px;
+    padding: 12px 0;
+  }
+  .listing-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .listing-header h2 > span {
+    display: block;
+    margin-left: 0;
+    margin-top: 3px;
+  }
+  .listing-provenance {
+    justify-content: flex-start;
+  }
+  .listing-provenance .badge {
+    font-size: 8px;
+    padding: 3px 5px;
+  }
+  .metric-card {
+    padding: 12px;
+    gap: 6px;
+  }
+  .summary-strip,
+  .coverage-strip {
+    gap: 8px;
+  }
+  .summary-price.metric-card > strong {
+    font-size: 30px;
+  }
+  .metric-card strong {
+    font-size: 15px;
+  }
+  .focus-workspace .chart-panel {
+    padding: 10px;
+  }
+  .focus-workspace .chart-controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .focus-workspace .chart-toolbar {
+    gap: 6px;
+  }
+  .focus-workspace .range-buttons button {
+    padding: 3px 8px;
+  }
+  .focus-workspace .chart-legend {
+    gap: 6px 10px;
+  }
+  .focus-workspace .chart-legend > span:first-child {
+    width: 100%;
+  }
+  .focus-workspace .inspection-actions {
+    margin-left: 0;
+  }
+  .focus-workspace .indicators-panel {
+    grid-template-columns: 1fr;
+  }
+  .focus-workspace button,
+  .focus-workspace select {
+    min-height: 36px;
+  }
+  .pane-selector button {
+    flex: 1 0 15%;
+  }
+  .has-dataset .app-header button {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+}
+
+.summary-price.metric-card > strong {
+  line-height: 1.08;
+}
+.focus-workspace .chart-heading .chart-toolbar {
+  padding: 0;
+  flex: 1 0 auto;
+  justify-content: flex-end;
+}
+.focus-workspace .chart-heading {
+  margin-bottom: 12px;
+}
+@media (max-width: 699px) {
+  .summary-strip .summary-price {
+    grid-column: auto;
+  }
+  .focus-workspace .chart-heading .chart-toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 699px) {
+  .readout-group .indicator-card h3 {
+    font-size: 13px;
+    margin-right: 70px;
+  }
+  .readout-group .indicator-card dt {
+    font-size: 12px;
+  }
+  .readout-group .indicator-card dd strong {
+    font-size: 14px;
+  }
+  .readout-group .indicator-card dd .small {
+    font-size: 10px;
+  }
+  .readout-group .indicator-card dd .readout-unit {
+    font-size: 10px;
+  }
+  .readout-group .disabled-indicator {
+    font-size: 13px;
+    min-height: 44px;
+  }
+  .readout-group .panel-actions button {
+    width: 32px;
+    min-height: 32px;
+  }
+  .readout-group .indicator-card summary {
+    font-size: 11px;
+    min-height: 32px;
+  }
+  .focus-workspace .chart-legend {
+    font-size: 11px;
+  }
+}
+
+.raw-volume {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.raw-volume h3 {
+  font-size: 12px;
+  margin: 0;
+}
+.raw-volume strong {
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.raw-volume p {
+  grid-column: 1 / -1;
+  font-size: 10px;
 }

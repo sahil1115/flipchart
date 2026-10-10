@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { StrictMode } from 'react';
-import { cleanup, render } from '@testing-library/react';
+import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { glassLight } from '../themes/themes';
 import { createDemoDataset } from '../demo/dataset';
@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => {
     remove: ReturnType<typeof vi.fn>;
     subscribeCrosshairMove: ReturnType<typeof vi.fn>;
     unsubscribeCrosshairMove: ReturnType<typeof vi.fn>;
+    subscribeClick: ReturnType<typeof vi.fn>;
+    unsubscribeClick: ReturnType<typeof vi.fn>;
     applyOptions: ReturnType<typeof vi.fn>;
     range: ReturnType<typeof vi.fn>;
     addSeries: ReturnType<typeof vi.fn>;
@@ -27,6 +29,10 @@ const mocks = vi.hoisted(() => {
       remove: vi.fn(),
       subscribeCrosshairMove: vi.fn(),
       unsubscribeCrosshairMove: vi.fn(),
+      subscribeClick: vi.fn(),
+      unsubscribeClick: vi.fn(),
+      setCrosshairPosition: vi.fn(),
+      clearCrosshairPosition: vi.fn(),
       applyOptions: vi.fn(),
       range,
       getRange,
@@ -61,6 +67,8 @@ vi.mock('lightweight-charts', () => ({
   LineSeries: {},
   HistogramSeries: {},
   ColorType: { Solid: 'solid' },
+  LineStyle: { Solid: 0, Dotted: 1, Dashed: 2 },
+  createSeriesMarkers: () => ({ setMarkers: vi.fn() }),
 }));
 import { PriceChart } from './PriceChart';
 afterEach(() => {
@@ -95,6 +103,9 @@ describe('chart ownership', () => {
       expect(chart.subscribeCrosshairMove).toHaveBeenCalledTimes(1);
       expect(chart.unsubscribeCrosshairMove).toHaveBeenCalledExactlyOnceWith(
         chart.subscribeCrosshairMove.mock.calls[0]?.[0],
+      );
+      expect(chart.unsubscribeClick).toHaveBeenCalledExactlyOnceWith(
+        chart.subscribeClick.mock.calls[0]?.[0],
       );
     }
   });
@@ -162,10 +173,12 @@ describe('chart ownership', () => {
     expect(chart.addSeries.mock.calls.some((call) => call[2] === 4)).toBe(true);
     expect(chart.subscribeCrosshairMove).toHaveBeenCalledTimes(1);
     const latest = candles.at(-1)!;
-    chart.subscribeCrosshairMove.mock.calls[0]![0]({
-      time: latest.time,
-      point: { x: 1, y: 1 },
-    });
+    act(() =>
+      chart.subscribeCrosshairMove.mock.calls[0]![0]({
+        time: latest.time,
+        point: { x: 1, y: 1 },
+      }),
+    );
     expect(cursor).toHaveBeenLastCalledWith(latest.time);
     chart.range.mockClear();
     view.rerender(

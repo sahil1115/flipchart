@@ -54,6 +54,8 @@ for (const width of [375, 768, 1440])
     await page.getByRole('button', { name: /Try Demo/ }).click();
     const chart = page.getByTestId('price-chart');
     await expect(chart.locator('canvas').first()).toBeVisible();
+    // The compact chart can occupy the demo button's former pointer position.
+    await page.mouse.move(0, 0);
     const card = page.getByRole('article', { name: 'RSI 14', exact: true });
     await expect(card).toContainText('Latest valid');
     const latest = await card.locator('strong').textContent();
@@ -70,7 +72,7 @@ for (const width of [375, 768, 1440])
     await expect(
       page.getByRole('article', { name: 'OBV', exact: true }),
     ).toContainText('Latest valid');
-    await expect(chart.locator('canvas')).toHaveCount(count + 4);
+    await expect(chart.locator('canvas')).toHaveCount(count);
     await page.getByRole('checkbox', { name: 'OBV', exact: true }).uncheck();
     await expect(chart.locator('canvas')).toHaveCount(count);
     await page.getByRole('checkbox', { name: 'EMA', exact: true }).check();
@@ -134,9 +136,10 @@ for (const width of [375, 768, 1440])
             .slice(0, -1)
             .map((row) => row.getBoundingClientRect().height);
           return (
-            heights.length === 5 &&
-            heights[0]! >= 300 &&
-            heights.slice(1).every((height) => height >= 90)
+            heights.length === 3 &&
+            heights[0]! >= 200 &&
+            heights[1]! >= 40 &&
+            heights[2]! >= 75
           );
         }),
       )

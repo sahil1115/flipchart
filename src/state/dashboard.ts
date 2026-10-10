@@ -11,6 +11,7 @@ export interface DashboardPreference {
   visible: Visibility;
   collapsed: Visibility;
   expanded: IndicatorId | null;
+  activePane: IndicatorId;
 }
 const ids = Object.keys(defaultVisibility) as IndicatorId[];
 export function defaultDashboard(): DashboardPreference {
@@ -20,6 +21,7 @@ export function defaultDashboard(): DashboardPreference {
     visible: { ...defaultVisibility },
     collapsed: Object.fromEntries(ids.map((id) => [id, false])) as Visibility,
     expanded: null,
+    activePane: 'rsi',
   };
 }
 /** v1 contained visibility only; migrate it and supply validated defaults. */
@@ -54,6 +56,16 @@ export function validateDashboard(value: unknown): DashboardPreference {
     if (raw.expanded !== null && !ids.includes(raw.expanded as IndicatorId))
       throw new Error('Invalid expanded panel');
     base.expanded = raw.expanded as IndicatorId | null;
+    if (raw.activePane !== undefined) {
+      if (
+        !ids.includes(raw.activePane as IndicatorId) ||
+        ['sma', 'ema', 'bands', 'volumeAverage'].includes(
+          raw.activePane as string,
+        )
+      )
+        throw new Error('Invalid active indicator pane');
+      base.activePane = raw.activePane as IndicatorId;
+    }
   }
   return base;
 }

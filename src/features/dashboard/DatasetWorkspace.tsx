@@ -3,7 +3,7 @@ import { GlassPanel } from '../../components/GlassPanel';
 import { PriceChart } from '../../charts/PriceChart';
 import type { Dataset, TradingDate } from '../../data/types';
 import type { Parameters } from '../../indicators/core';
-import type { Visibility } from '../../indicators/presentation';
+import type { IndicatorId, Visibility } from '../../indicators/presentation';
 import { calculateDataset } from '../../indicators/core';
 import { definitions } from '../../indicators/presentation';
 import { IndicatorControls } from './IndicatorControls';
@@ -17,6 +17,7 @@ import { useDashboard } from '../../state/dashboard';
 import { exportDataset, downloadText } from '../../import-export/export';
 import type { ExportWindow } from '../../import-export/export';
 import { dailySummary } from '../../indicators/summary';
+import { formatValue, paneLabels } from './readout';
 
 export function DatasetWorkspace({
   dataset: sourceDataset,
@@ -37,8 +38,16 @@ export function DatasetWorkspace({
     setRange,
     resetChart,
   } = useWorkspace();
-  const { parameters, visible, collapsed, expanded, saved, update, reset } =
-    useDashboard();
+  const {
+    parameters,
+    visible,
+    collapsed,
+    expanded,
+    activePane: selectedPane,
+    saved,
+    update,
+    reset,
+  } = useDashboard();
   const setParameters = (parameters: Parameters) => update({ parameters });
   const setVisible = (visible: Visibility) => update({ visible });
   const exportWindow = useRef<ExportWindow | null>(null);
@@ -47,6 +56,12 @@ export function DatasetWorkspace({
   const updateWindow = useCallback((window: ExportWindow | null) => {
     exportWindow.current = window;
   }, []);
+  const activePane = visible[selectedPane]
+    ? selectedPane
+    : (Object.keys(paneLabels).find((id) => visible[id as IndicatorId]) as
+        IndicatorId | undefined);
+  const choosePane = (id: IndicatorId) =>
+    update({ activePane: id, visible: { ...visible, [id]: true } });
   const [requestedInterval, setInterval] =
     useState<Dataset['metadata']['interval']>('daily');
   const interval =
@@ -103,15 +118,23 @@ export function DatasetWorkspace({
     time: TradingDate | null;
   } | null>(null);
   const cursor =
-    cursorSelection?.id === dataset.metadata.id ? cursorSelection.time : null;
+    cursorSelection?.id ===
+    `${dataset.metadata.id}:${dataset.metadata.revision}:${interval}:${resetRevision}`
+      ? cursorSelection.time
+      : null;
   const updateCursor = useCallback(
     (time: TradingDate | null) =>
       setCursorSelection((previous) =>
-        previous?.id === dataset.metadata.id && previous.time === time
+        previous?.id ===
+          `${dataset.metadata.id}:${dataset.metadata.revision}:${interval}:${resetRevision}` &&
+        previous.time === time
           ? previous
-          : { id: dataset.metadata.id, time },
+          : {
+              id: `${dataset.metadata.id}:${dataset.metadata.revision}:${interval}:${resetRevision}`,
+              time,
+            },
       ),
-    [dataset.metadata.id],
+    [dataset.metadata.id, dataset.metadata.revision, interval, resetRevision],
   );
   const outputs = useMemo(
     () => calculateDataset(dataset, parameters),
@@ -132,6 +155,9 @@ export function DatasetWorkspace({
       </GlassPanel>
     );
   const metadata = dataset.metadata;
+  const inspectedBar = cursor
+    ? (dataset.candles.find((bar) => bar.time === cursor) ?? latest)
+    : latest;
   const listing = metadata.listing;
   const demo = metadata.mode === 'demo';
   const live = metadata.mode === 'live';
@@ -157,91 +183,125 @@ export function DatasetWorkspace({
   ).length;
   return (
     <>
-      <GlassPanel className="summary" aria-label="Dataset summary">
-        <div className="listing">
-          <span className="ticker-icon" aria-hidden="true">
-            {listing.symbol[0]}
-          </span>
-          <div>
-            <h2>
-              {listing.symbol}{' '}
-              <span className="badge">
-                {demo ? 'SYNTHETIC' : metadata.mode.toUpperCase()}
-              </span>
-            </h2>
-            <p>{listing.name ?? 'Name unavailable'}</p>
-            <p className="small">
-              {listing.exchange ?? 'Exchange unavailable'} ·{' '}
-              {listing.currency ?? 'Currency unavailable'} · {metadata.interval}{' '}
-              · {listing.timezone ?? 'Timezone unavailable'}
-            </p>
+      <section
+        className="summary workspace-summary"
+        aria-label="Dataset summary"
+      >
+        <div className="listing-header">
+          <div className="listing">
+            <div>
+              <h2>
+                {listing.symbol}{' '}
+                <span>{listing.name ?? 'Name unavailable'}</span>
+              </h2>
+              <p className="small">
+                {listing.exchange ?? 'Exchange unavailable'} ·{' '}
+                {listing.currency ?? 'Currency unavailable'} · {interval} ·{' '}
+                {listing.timezone ?? 'Timezone unavailable'}
+              </p>
+            </div>
+          </div>
+          <div className="listing-provenance">
+            <span className="badge">
+              {demo ? 'SYNTHETIC' : metadata.mode.toUpperCase()}
+            </span>
+            <span className="small">
+              {latest.time}
+              {latest.incomplete ? ' · Provisional' : ''}
+            </span>
+            <span className="badge">
+              {demo
+                ? 'Historical demo · fixed dataset'
+                : live
+                  ? stale
+                    ? 'Stale loaded data'
+                    : 'Provider history · delay unverified'
+                  : 'Historical import'}
+            </span>
+            <button onClick={onChangeData}>Change data</button>
           </div>
         </div>
-        <div className="summary-price">
-          <span className="metric-label">
-            LATEST CLOSE{latest.incomplete ? ' · PROVISIONAL' : ''}
-          </span>
-          <strong>{money(latest.close)}</strong>
-          <span
-            className={change !== null && change < 0 ? 'negative' : 'positive'}
+        <div className="summary-strip">
+          <GlassPanel className="summary-price metric-card">
+            <span className="metric-label">
+              LATEST CLOSE{latest.incomplete ? ' · PROVISIONAL' : ''}
+            </span>
+            <strong>{money(latest.close)}</strong>
+            <span
+              className={
+                change !== null && change < 0 ? 'negative' : 'positive'
+              }
+            >
+              {change === null
+                ? 'Unavailable'
+                : `${change >= 0 ? '+' : '−'}${money(Math.abs(change))}${percent === null ? '' : ` (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)`}`}
+            </span>
+            <span className="small">
+              {interval === 'daily'
+                ? 'Previous-session change'
+                : 'Previous-bar change'}
+            </span>
+          </GlassPanel>
+          <GlassPanel className="summary-stat metric-card">
+            <span className="metric-label">LATEST VOLUME</span>
+            <strong title={latest.volume?.toLocaleString('en-US')}>
+              {latest.volume === null
+                ? 'Unavailable'
+                : formatValue(latest.volume, 'volume')}
+            </strong>
+            <span className="small">
+              {demo
+                ? 'Synthetic units'
+                : live
+                  ? 'As supplied by provider'
+                  : 'As supplied in CSV'}
+            </span>
+          </GlassPanel>
+          <div
+            className="coverage-strip"
+            role="region"
+            aria-label="Daily coverage metrics"
           >
-            {change === null
-              ? 'Unavailable'
-              : `${change >= 0 ? '+' : '−'}${money(Math.abs(change))}${percent === null ? '' : ` (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)`}`}
-          </span>
-          <span className="small">
-            {interval === 'daily'
-              ? 'Previous-session change'
-              : 'Previous-bar change'}
-          </span>
+            <GlassPanel className="metric-card">
+              <span className="metric-label">52-WEEK HIGH / LOW</span>
+              <strong>
+                {summary.high52 === null || summary.low52 === null
+                  ? 'Unavailable'
+                  : `${money(summary.high52)} / ${money(summary.low52)}`}
+              </strong>
+              {summary.high52 === null || summary.low52 === null ? (
+                <p className="small">
+                  Needs 52 weeks and 252 finalized daily bars
+                </p>
+              ) : (
+                <div className="coverage-track" aria-hidden="true">
+                  <span
+                    style={{
+                      left: `${summary.high52 === summary.low52 ? 50 : Math.max(0, Math.min(100, ((sourceDataset.candles.filter((bar) => !bar.incomplete).at(-1)!.close - summary.low52) / (summary.high52 - summary.low52)) * 100))}%`,
+                    }}
+                  />
+                </div>
+              )}
+              <p className="small">
+                Finalized daily source · {summary.time ?? 'unavailable'}
+              </p>
+            </GlassPanel>
+            <GlassPanel className="metric-card">
+              <span className="metric-label">DISTANCE FROM DAILY SMA-200</span>
+              <strong>
+                {summary.distance200 === null
+                  ? 'Unavailable'
+                  : `${summary.distance200 >= 0 ? '+' : ''}${summary.distance200.toFixed(2)}%`}
+              </strong>
+              <p className="small">
+                {summary.distance200 === null
+                  ? 'Needs 200 finalized daily bars and nonzero average'
+                  : 'Independent of chart range and interval'}
+              </p>
+            </GlassPanel>
+          </div>
         </div>
-        <div className="summary-stat">
-          <span className="metric-label">VOLUME</span>
-          <strong>
-            {latest.volume?.toLocaleString('en-US') ?? 'Unavailable'}
-          </strong>
-          <span className="small">
-            {demo
-              ? 'Synthetic units'
-              : live
-                ? 'As supplied by provider'
-                : 'As supplied in CSV'}
-          </span>
-        </div>
-        <div className="summary-stat">
-          <span className="metric-label">DATA DATE</span>
-          <strong>{latest.time}</strong>
-          <span className="small">
-            {demo
-              ? 'Historical demo · fixed dataset'
-              : live
-                ? `${stale ? 'Stale loaded data' : 'Daily provider data'} · freshness/delay unverified`
-                : 'Historical import · freshness not verified'}
-          </span>
-        </div>
-      </GlassPanel>
-      <GlassPanel className="summary" aria-label="Daily coverage metrics">
-        <div>
-          <span className="metric-label">52-WEEK HIGH / LOW</span>
-          <p>
-            {summary.high52 === null || summary.low52 === null
-              ? 'Unavailable · needs 52 weeks and 252 finalized daily bars'
-              : `${money(summary.high52)} / ${money(summary.low52)}`}
-          </p>
-        </div>
-        <div>
-          <span className="metric-label">DISTANCE FROM DAILY SMA-200</span>
-          <p>
-            {summary.distance200 === null
-              ? 'Unavailable · needs 200 finalized daily bars and nonzero average'
-              : `${summary.distance200.toFixed(2)}%`}
-          </p>
-        </div>
-        <p className="small">
-          Daily source history · finalized as of {summary.time ?? 'unavailable'}{' '}
-          · independent of visible range and selected interval.
-        </p>
-      </GlassPanel>
+      </section>
       {metadata.aggregation && (
         <div className="notice" role="status">
           {metadata.aggregation} Group timestamps mark the first calendar date,
@@ -284,159 +344,269 @@ export function DatasetWorkspace({
           Volume-dependent calculations cannot use missing volume.
         </div>
       )}
-      <GlassPanel className="chart-panel" aria-label="Price workspace">
-        <div className="chart-heading">
-          <div>
-            <h2>Price & volume</h2>
-            <p>
-              {demo
-                ? 'Synthetic'
+      <div className="focus-workspace">
+        <GlassPanel className="chart-panel" aria-label="Price workspace">
+          <div className="chart-heading">
+            <div>
+              <h2>Price & volume</h2>
+              <p>
+                {demo
+                  ? 'Synthetic'
+                  : live
+                    ? metadata.provider === 'alpha-vantage'
+                      ? 'Alpha Vantage'
+                      : 'Twelve Data'
+                    : 'Imported'}{' '}
+                {interval} candles ·{' '}
+                {dataset.candles.length.toLocaleString('en-US')} bars ·{' '}
+                {metadata.adjustment} prices
+              </p>
+            </div>
+            <div className="chart-controls">
+              <label>
+                View
+                <select
+                  aria-label="Chart view"
+                  value={chartStyle}
+                  onChange={(event) =>
+                    setChartStyle(event.target.value as ChartStyle)
+                  }
+                >
+                  <option value="candles">Candlestick</option>
+                  <option value="line">Line</option>
+                  <option value="area">Area</option>
+                </select>
+              </label>
+              <label>
+                Interval
+                <select
+                  aria-label="Interval"
+                  value={interval}
+                  disabled={sourceDataset.metadata.interval !== 'daily'}
+                  onChange={(event) =>
+                    setInterval(
+                      event.target.value as Dataset['metadata']['interval'],
+                    )
+                  }
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">
+                    {sourceDataset.metadata.interval === 'weekly'
+                      ? 'Weekly / provider native'
+                      : 'Weekly / local aggregation'}
+                  </option>
+                  <option value="monthly">
+                    {sourceDataset.metadata.interval === 'monthly'
+                      ? 'Monthly / provider native'
+                      : 'Monthly / local aggregation'}
+                  </option>
+                </select>
+              </label>
+            </div>
+            <div className="chart-toolbar">
+              <div
+                className="range-buttons"
+                role="group"
+                aria-label="Display range"
+              >
+                {(['1M', '3M', '6M', '1Y', 'ALL'] as DisplayRange[]).map(
+                  (value) => (
+                    <button
+                      key={value}
+                      aria-pressed={range === value}
+                      onClick={() => setRange(value)}
+                    >
+                      {value === 'ALL' ? 'All' : value}
+                    </button>
+                  ),
+                )}
+              </div>
+              <button className="reset-button" onClick={resetChart}>
+                Reset view <span aria-hidden="true">↺</span>
+              </button>
+            </div>
+          </div>
+          <div
+            className="overlay-chips"
+            role="group"
+            aria-label="Price overlays"
+          >
+            <span className="metric-label">OVERLAYS</span>
+            {items
+              .filter((item) => ['sma', 'ema', 'bands'].includes(item.id))
+              .map((item) => (
+                <button
+                  key={item.id}
+                  aria-pressed={visible[item.id]}
+                  onClick={() =>
+                    setVisible({ ...visible, [item.id]: !visible[item.id] })
+                  }
+                >
+                  {item.name}
+                </button>
+              ))}
+          </div>
+          <div
+            className="pane-selector"
+            role="group"
+            aria-label="Indicator pane"
+          >
+            {Object.entries(paneLabels).map(([id, label]) => (
+              <button
+                key={id}
+                aria-label={`Plot ${label}`}
+                aria-pressed={activePane === id}
+                onClick={() => choosePane(id as IndicatorId)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <PriceChart
+            key={`${metadata.id}:${metadata.revision}:${interval}:${resetRevision}`}
+            candles={dataset.candles}
+            theme={theme}
+            style={chartStyle}
+            range={range}
+            resetRevision={resetRevision}
+            sourceLabel={
+              demo
+                ? 'synthetic'
                 : live
-                  ? metadata.provider === 'alpha-vantage'
-                    ? 'Alpha Vantage'
-                    : 'Twelve Data'
-                  : 'Imported'}{' '}
-              {interval} candles ·{' '}
-              {dataset.candles.length.toLocaleString('en-US')} bars ·{' '}
-              {metadata.adjustment} prices
+                  ? `${metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'} provider`
+                  : 'imported'
+            }
+            indicators={items}
+            interval={interval}
+            activePane={activePane ?? null}
+            visible={visible}
+            onCursor={updateCursor}
+            onVisibleWindow={updateWindow}
+          />
+          <div className="chart-footnote">
+            <span>
+              Hover to inspect · click or tap to pin · arrows to step · drag to
+              pan
+            </span>
+            <span>
+              {unknownVolume === dataset.candles.length
+                ? 'Volume unavailable'
+                : 'Volume in lower pane'}{' '}
+              · shared time scale and cursor across visible panes
+            </span>
+          </div>
+        </GlassPanel>
+        <aside className="readout-rail" aria-label="Indicator values">
+          <div className={`readout-heading${cursor ? ' inspecting' : ''}`}>
+            <h2>
+              Indicator readout{' '}
+              <span className="badge">{cursor ? 'CURSOR' : 'LATEST'}</span>
+            </h2>
+            <p className="small">
+              {cursor
+                ? `Values at the inspected bar · ${cursor}`
+                : 'Latest valid values · each with its own date'}
             </p>
           </div>
-          <div className="chart-controls">
-            <label>
-              View
-              <select
-                aria-label="Chart view"
-                value={chartStyle}
-                onChange={(event) =>
-                  setChartStyle(event.target.value as ChartStyle)
-                }
-              >
-                <option value="candles">Candlestick</option>
-                <option value="line">Line</option>
-                <option value="area">Area</option>
-              </select>
-            </label>
-            <label>
-              Interval
-              <select
-                aria-label="Interval"
-                value={interval}
-                disabled={sourceDataset.metadata.interval !== 'daily'}
-                onChange={(event) =>
-                  setInterval(
-                    event.target.value as Dataset['metadata']['interval'],
-                  )
-                }
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">
-                  {sourceDataset.metadata.interval === 'weekly'
-                    ? 'Weekly / provider native'
-                    : 'Weekly / local aggregation'}
-                </option>
-                <option value="monthly">
-                  {sourceDataset.metadata.interval === 'monthly'
-                    ? 'Monthly / provider native'
-                    : 'Monthly / local aggregation'}
-                </option>
-              </select>
-            </label>
-          </div>
-        </div>
-        <div className="chart-toolbar">
-          <div
-            className="range-buttons"
-            role="group"
-            aria-label="Display range"
+          <section
+            className="indicators-panel"
+            aria-label="Indicator workspace"
           >
-            {(['1M', '3M', '6M', '1Y', 'ALL'] as DisplayRange[]).map(
-              (value) => (
-                <button
-                  key={value}
-                  aria-pressed={range === value}
-                  onClick={() => setRange(value)}
-                >
-                  {value === 'ALL' ? 'All' : value}
-                </button>
-              ),
+            {!saved && (
+              <p role="status">
+                Layout and parameters apply for this session only; browser
+                storage is unavailable.
+              </p>
             )}
-          </div>
-          <button className="reset-button" onClick={resetChart}>
-            Reset view <span aria-hidden="true">↺</span>
-          </button>
-        </div>
-        <PriceChart
-          key={metadata.id}
-          candles={dataset.candles}
-          theme={theme}
-          style={chartStyle}
-          range={range}
-          resetRevision={resetRevision}
-          sourceLabel={
-            demo
-              ? 'synthetic'
-              : live
-                ? `${metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'} provider`
-                : 'imported'
-          }
-          indicators={items}
-          interval={interval}
-          visible={visible}
-          onCursor={updateCursor}
-          onVisibleWindow={updateWindow}
-        />
-        <div className="chart-footnote">
-          <span>Drag to pan · scroll or pinch to zoom</span>
-          <span>
-            {unknownVolume === dataset.candles.length
-              ? 'Volume unavailable'
-              : 'Volume in lower pane'}{' '}
-            · shared time scale and cursor across visible panes
-          </span>
-        </div>
-      </GlassPanel>
-      <GlassPanel className="indicators-panel" aria-label="Indicator workspace">
-        {!saved && (
-          <p role="status">
-            Layout and parameters apply for this session only; browser storage
-            is unavailable.
-          </p>
-        )}
-        <button onClick={reset}>Reset panel layout and parameters</button>
+            {(
+              ['Price & Trend', 'Momentum', 'Volatility', 'Volume'] as const
+            ).map((group) => (
+              <GlassPanel className="readout-group" key={group}>
+                <h3>
+                  {group}{' '}
+                  <span>
+                    {items.filter((item) => item.group === group).length +
+                      (group === 'Volume' ? 1 : 0)}
+                  </span>
+                </h3>
+                {group === 'Volume' && (
+                  <article className="raw-volume" aria-label="Raw volume">
+                    <h3>Volume</h3>
+                    <strong
+                      title={inspectedBar.volume?.toLocaleString('en-US')}
+                    >
+                      {inspectedBar.volume === null
+                        ? 'Unavailable'
+                        : formatValue(inspectedBar.volume, 'volume')}
+                    </strong>
+                    <p className="small">
+                      {cursor ? 'Cursor' : 'Latest bar'} · {inspectedBar.time}
+                      {inspectedBar.incomplete ? ' · Provisional' : ''} · units
+                      as supplied
+                    </p>
+                  </article>
+                )}
+                <div className="indicator-cards">
+                  {items
+                    .filter((item) => item.group === group)
+                    .map((item) =>
+                      visible[item.id] ? (
+                        <IndicatorCard
+                          key={item.id}
+                          item={item}
+                          candles={dataset.candles}
+                          cursor={cursor}
+                          currency={listing.currency}
+                          interval={interval}
+                          collapsed={collapsed[item.id]}
+                          expanded={expanded === item.id}
+                          onToggle={(checked) =>
+                            setVisible({ ...visible, [item.id]: checked })
+                          }
+                          onCollapse={() =>
+                            update({
+                              collapsed: {
+                                ...collapsed,
+                                [item.id]: !collapsed[item.id],
+                              },
+                            })
+                          }
+                          onExpand={() =>
+                            update({
+                              expanded: expanded === item.id ? null : item.id,
+                              collapsed: { ...collapsed, [item.id]: false },
+                            })
+                          }
+                        />
+                      ) : (
+                        <label className="disabled-indicator" key={item.id}>
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            onChange={() =>
+                              setVisible({ ...visible, [item.id]: true })
+                            }
+                          />
+                          {item.name}
+                        </label>
+                      ),
+                    )}
+                </div>
+              </GlassPanel>
+            ))}
+          </section>
+        </aside>
+      </div>
+      <GlassPanel className="calculation-settings">
         <IndicatorControls
           parameters={parameters}
           onParameters={setParameters}
           visible={visible}
           onVisibility={setVisible}
           items={items}
+          hideVisibility
         />
-        <div className="indicator-cards">
-          {items
-            .filter((item) => visible[item.id])
-            .map((item) => (
-              <IndicatorCard
-                key={item.id}
-                item={item}
-                candles={dataset.candles}
-                cursor={cursor}
-                currency={listing.currency}
-                interval={interval}
-                collapsed={collapsed[item.id]}
-                expanded={expanded === item.id}
-                onCollapse={() =>
-                  update({
-                    collapsed: { ...collapsed, [item.id]: !collapsed[item.id] },
-                  })
-                }
-                onExpand={() =>
-                  update({
-                    expanded: expanded === item.id ? null : item.id,
-                    collapsed: { ...collapsed, [item.id]: false },
-                  })
-                }
-              />
-            ))}
-        </div>
+        <button onClick={reset}>Reset panel layout and parameters</button>
       </GlassPanel>
       <GlassPanel className="export-panel" aria-label="Export dataset">
         <h2>Export loaded data</h2>
@@ -510,7 +680,6 @@ export function DatasetWorkspace({
           Coverage {metadata.coverage?.from} – {metadata.coverage?.to}.{' '}
           {metadata.importConventions?.timezoneInterpretation}
         </p>
-        <button onClick={onChangeData}>Change data</button>
       </div>
     </>
   );

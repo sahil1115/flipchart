@@ -1,6 +1,6 @@
 # FlipChart
 
-**Version: [v0.1.2](https://github.com/sahil1115/flipchart/releases/tag/v0.1.2)**
+**Version: [v0.1.3](https://github.com/sahil1115/flipchart/releases/tag/v0.1.3)**
 
 FlipChart is a stock-chart dashboard that runs in your browser. Explore prices, volume, and 15 technical indicators using demo data, your own CSV files, or a market-data API.
 
@@ -23,7 +23,9 @@ No backend, database server, or API key is needed for demo data or CSV imports.
 
 - Choose **Try Demo** to explore the charts immediately.
 - Choose **Import CSV** to load daily price data from a file.
-- Pan and zoom the chart, change the date range, and adjust indicator settings.
+- Choose an indicator above the chart; its values appear in the readout beside it.
+- Hover to inspect, click or tap to pin a bar, and use the arrow buttons to step through history.
+- Pan and zoom the chart, change the date range, and adjust calculation parameters below the workspace.
 - Save listings to your watchlist and export chart data as CSV.
 - Use the top **Theme** button to choose Glass Light, Soft Clay, Midnight Clay, or Frosted Mono. Open Settings to reduce visual effects.
 

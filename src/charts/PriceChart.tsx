@@ -6,6 +6,8 @@ import {
   createChart,
   HistogramSeries,
   LineSeries,
+  LineStyle,
+  createSeriesMarkers,
 } from 'lightweight-charts';
 import type {
   IChartApi,
@@ -13,6 +15,7 @@ import type {
   IPriceLine,
   MouseEventParams,
   Time,
+  ISeriesMarkersPluginApi,
 } from 'lightweight-charts';
 import type { Candle, TradingDate } from '../data/types';
 import type { Dataset } from '../data/types';
@@ -22,6 +25,8 @@ import type {
 } from '../indicators/presentation';
 import type { ChartStyle, DisplayRange } from '../state/workspace';
 import type { ThemeDefinition } from '../themes/themes';
+import type { IndicatorId } from '../indicators/presentation';
+import { formatValue } from '../features/dashboard/readout';
 
 interface Props {
   candles: Candle[];
@@ -35,6 +40,7 @@ interface Props {
   onVisibleWindow?: (window: { from: number; to: number } | null) => void;
   onCursor?: (time: TradingDate | null) => void;
   interval?: Dataset['metadata']['interval'];
+  activePane?: IndicatorId | null;
 }
 interface ChartHandle {
   chart: IChartApi;
@@ -45,6 +51,7 @@ interface ChartHandle {
   indicators: (ISeriesApi<'Line'> | ISeriesApi<'Histogram'>)[];
   guides: IPriceLine[];
   topology: string;
+  markers: ISeriesMarkersPluginApi<Time>;
 }
 
 export function PriceChart({
@@ -59,10 +66,13 @@ export function PriceChart({
   onCursor,
   onVisibleWindow,
   interval = 'daily',
+  activePane,
 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const handle = useRef<ChartHandle | null>(null);
   const [hover, setHover] = useState<Candle | null>(null);
+  const [pinned, setPinned] = useState<Candle | null>(null);
+  const inspected = hover ?? pinned;
   const cursorCallback = useRef(onCursor);
   const windowCallback = useRef(onVisibleWindow);
   useEffect(() => {
@@ -83,12 +93,17 @@ export function PriceChart({
       layout: {
         attributionLogo: true,
         fontFamily: 'Inter, Segoe UI, sans-serif',
+        fontSize: 11,
+        panes: { enableResize: false },
       },
       timeScale: { timeVisible: false, borderVisible: true, rightOffset: 3 },
       rightPriceScale: { minimumWidth: 64 },
       crosshair: { mode: 0 },
+      handleScroll: { vertTouchDrag: false },
     });
-    const candleSeries = chart.addSeries(CandlestickSeries);
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    });
     const line = chart.addSeries(LineSeries, { visible: false, lineWidth: 2 });
     const area = chart.addSeries(AreaSeries, { visible: false, lineWidth: 2 });
     const volume = candles.some((candle) => candle.volume !== null)
@@ -97,11 +112,13 @@ export function PriceChart({
           {
             priceFormat: { type: 'volume' },
             priceScaleId: 'right',
+            lastValueVisible: false,
+            priceLineVisible: false,
           },
           1,
         )
       : null;
-    chart.panes()[1]?.setHeight(110);
+    chart.panes()[1]?.setHeight(74);
     candleSeries.setData(candles);
     const closes = candles.map(({ time, close }) => ({ time, value: close }));
     line.setData(closes);
@@ -112,7 +129,6 @@ export function PriceChart({
     const crosshair = (event: MouseEventParams<Time>) => {
       if (!event.time || !event.point) {
         setHover(null);
-        cursorCallback.current?.(null);
         return;
       }
       const time =
@@ -120,9 +136,18 @@ export function PriceChart({
           ? `${event.time.year}-${String(event.time.month).padStart(2, '0')}-${String(event.time.day).padStart(2, '0')}`
           : String(event.time);
       setHover(byDate.get(time) ?? null);
-      cursorCallback.current?.(byDate.get(time)?.time ?? null);
+    };
+    const pin = (event: MouseEventParams<Time>) => {
+      if (!event.time) return;
+      const time =
+        typeof event.time === 'object'
+          ? `${event.time.year}-${String(event.time.month).padStart(2, '0')}-${String(event.time.day).padStart(2, '0')}`
+          : String(event.time);
+      setPinned(byDate.get(time) ?? null);
+      setHover(null);
     };
     chart.subscribeCrosshairMove(crosshair);
+    chart.subscribeClick(pin);
     const windowChanged = (window: { from: number; to: number } | null) =>
       windowCallback.current?.(window);
     chart.timeScale().subscribeVisibleLogicalRangeChange(windowChanged);
@@ -135,9 +160,11 @@ export function PriceChart({
       indicators: [],
       guides: [],
       topology: '',
+      markers: createSeriesMarkers(candleSeries),
     };
     return () => {
       chart.unsubscribeCrosshairMove(crosshair);
+      chart.unsubscribeClick(pin);
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(windowChanged);
       chart.remove();
       handle.current = null;
@@ -151,6 +178,9 @@ export function PriceChart({
     const active = indicators.filter(
       (item) =>
         visible[item.id] &&
+        (activePane === undefined ||
+          ['sma', 'ema', 'bands', 'volumeAverage'].includes(item.id) ||
+          item.id === activePane) &&
         (item.id !== 'volumeAverage' || api.volume) &&
         item.series.some((series) =>
           series.values.some((value) => value !== null),
@@ -186,21 +216,37 @@ export function PriceChart({
         const series =
           existing ??
           (entry.histogram
-            ? api.chart.addSeries(HistogramSeries, { title: entry.name }, pane)
+            ? api.chart.addSeries(
+                HistogramSeries,
+                { lastValueVisible: false, priceLineVisible: false },
+                pane,
+              )
             : api.chart.addSeries(
                 LineSeries,
                 {
-                  title: entry.name,
-                  lineWidth: 1,
-                  lineStyle: index % 3,
+                  title: '',
+                  lineWidth: 2,
+                  lineStyle:
+                    item.id === 'ema' || item.id === 'volumeAverage'
+                      ? LineStyle.Dashed
+                      : item.id === 'bands'
+                        ? LineStyle.Dotted
+                        : index % 3,
+                  lastValueVisible: false,
+                  priceLineVisible: false,
                   priceFormat:
                     item.units === 'volume'
                       ? { type: 'volume' }
-                      : { type: 'price', precision: 4, minMove: 0.0001 },
+                      : {
+                          type: 'custom',
+                          minMove: 0.0001,
+                          formatter: (value: number) =>
+                            formatValue(value, item.units),
+                        },
                 },
                 pane,
               ));
-        series.applyOptions({ title: entry.name });
+        series.applyOptions({ title: '' });
         series.setData(
           candles.map((bar, i) =>
             entry.values[i] === null
@@ -231,13 +277,28 @@ export function PriceChart({
         .panes()
         .forEach((pane, index) =>
           pane.setStretchFactor(
-            index === 0 ? 420 : index === 1 && api.volume ? 110 : 170,
+            index === 0 ? 352 : index === 1 && api.volume ? 74 : 130,
           ),
         );
     if (savedRange) api.chart.timeScale().setVisibleLogicalRange(savedRange);
     // The owning chart effect removes all series/listeners on unmount.
     // Parameter changes reuse series; only a pane topology change remounts them.
-  }, [candles, indicators, visible]);
+  }, [candles, indicators, visible, activePane]);
+
+  useEffect(() => {
+    cursorCallback.current?.(inspected?.time ?? null);
+    const api = handle.current;
+    if (!api) return;
+    if (pinned && !hover) {
+      const series =
+        style === 'candles'
+          ? api.candles
+          : style === 'area'
+            ? api.area
+            : api.line;
+      api.chart.setCrosshairPosition(pinned.close, pinned.time, series);
+    } else if (!inspected) api.chart.clearCrosshairPosition();
+  }, [inspected, pinned, hover, style]);
 
   useEffect(() => {
     const api = handle.current;
@@ -252,24 +313,47 @@ export function PriceChart({
         textColor: palette.text,
       },
       grid: {
-        vertLines: { color: palette.grid },
+        vertLines: { color: palette.grid, visible: false },
         horzLines: { color: palette.grid },
       },
       rightPriceScale: { borderColor: palette.border },
       timeScale: { borderColor: palette.border },
       crosshair: {
-        vertLine: { color: palette.crosshair },
-        horzLine: { color: palette.crosshair },
+        vertLine: { color: palette.crosshair, style: LineStyle.Dashed },
+        horzLine: { color: palette.crosshair, style: LineStyle.Dashed },
       },
     });
     api.candles.applyOptions({
-      upColor: palette.positive,
+      upColor: 'transparent',
       downColor: palette.negative,
       borderUpColor: palette.positive,
       borderDownColor: palette.negative,
       wickUpColor: palette.positive,
       wickDownColor: palette.negative,
     });
+    api.candles.setData(
+      candles.map((bar) =>
+        bar.incomplete
+          ? {
+              ...bar,
+              color: 'transparent',
+              borderColor: palette.accent,
+              wickColor: palette.accent,
+            }
+          : bar,
+      ),
+    );
+    api.markers.setMarkers(
+      candles
+        .filter((bar) => bar.incomplete)
+        .map((bar) => ({
+          time: bar.time,
+          position: 'aboveBar',
+          shape: 'square',
+          color: palette.accent,
+          text: 'PROV',
+        })),
+    );
     api.line.applyOptions({ color: palette.accent });
     api.area.applyOptions({
       lineColor: palette.accent,
@@ -278,7 +362,7 @@ export function PriceChart({
     });
     api.indicators.forEach((series, index) =>
       series.applyOptions({
-        color: [palette.accent, palette.positive, palette.negative][index % 3],
+        color: [palette.accent, palette.crosshair, palette.negative][index % 3],
       }),
     );
     api.volume?.setData(
@@ -329,11 +413,32 @@ export function PriceChart({
     });
   }, [range, resetRevision, candles]);
 
-  const current = hover ?? candles.at(-1);
+  const current = inspected ?? candles.at(-1);
+  const step = (direction: number) => {
+    const index = inspected
+      ? candles.findIndex((bar) => bar.time === inspected.time)
+      : candles.length - 1;
+    const nextIndex = Math.max(
+      0,
+      Math.min(candles.length - 1, index + direction),
+    );
+    setPinned(candles[nextIndex]!);
+    setHover(null);
+    const scale = handle.current?.chart.timeScale();
+    const window = scale?.getVisibleLogicalRange();
+    if (window && (nextIndex < window.from || nextIndex > window.to)) {
+      const width = window.to - window.from;
+      scale?.setVisibleLogicalRange({
+        from: nextIndex - width / 2,
+        to: nextIndex + width / 2,
+      });
+    }
+  };
   const lowerPanes =
     indicators?.filter(
       (item) =>
         visible?.[item.id] &&
+        (activePane === undefined || item.id === activePane) &&
         !['sma', 'ema', 'bands', 'volumeAverage'].includes(item.id) &&
         item.series.some((series) =>
           series.values.some((value) => value !== null),
@@ -341,28 +446,75 @@ export function PriceChart({
     ).length ?? 0;
   return (
     <>
-      <div className="chart-legend" aria-live="off">
+      <div
+        className={`chart-legend${inspected ? ' inspecting' : ''}`}
+        aria-live="off"
+      >
         <span>
-          {hover ? 'Cursor' : 'Latest bar'} · {current?.time}
+          <b className="inspection-mode">
+            {inspected
+              ? pinned && !hover
+                ? 'Cursor · pinned'
+                : 'Cursor'
+              : 'Latest bar'}
+          </b>{' '}
+          · {current?.time}
+          {current?.incomplete ? ' · Provisional' : ''}
         </span>
         <span>
-          O <strong>{current?.open.toFixed(2)}</strong>
+          O{' '}
+          <strong title={current?.open.toString()}>
+            {current?.open.toFixed(2)}
+          </strong>
         </span>
         <span>
-          H <strong>{current?.high.toFixed(2)}</strong>
+          H{' '}
+          <strong title={current?.high.toString()}>
+            {current?.high.toFixed(2)}
+          </strong>
         </span>
         <span>
-          L <strong>{current?.low.toFixed(2)}</strong>
+          L{' '}
+          <strong title={current?.low.toString()}>
+            {current?.low.toFixed(2)}
+          </strong>
         </span>
         <span>
-          C <strong>{current?.close.toFixed(2)}</strong>
+          C{' '}
+          <strong title={current?.close.toString()}>
+            {current?.close.toFixed(2)}
+          </strong>
         </span>
         <span>
           Volume{' '}
-          <strong>
-            {current?.volume?.toLocaleString('en-US') ?? 'Unavailable'}
+          <strong title={current?.volume?.toLocaleString('en-US')}>
+            {current?.volume === null || current?.volume === undefined
+              ? 'Unavailable'
+              : formatValue(current.volume, 'volume')}
           </strong>
         </span>
+        <div className="inspection-actions">
+          <button aria-label="Inspect previous bar" onClick={() => step(-1)}>
+            ‹
+          </button>
+          <button
+            aria-label="Inspect next bar"
+            onClick={() => step(1)}
+            disabled={current?.time === candles.at(-1)?.time}
+          >
+            ›
+          </button>
+          {inspected && (
+            <button
+              onClick={() => {
+                setHover(null);
+                setPinned(null);
+              }}
+            >
+              Back to latest
+            </button>
+          )}
+        </div>
       </div>
       <div
         ref={container}
@@ -371,14 +523,23 @@ export function PriceChart({
         style={
           indicators
             ? {
-                height:
-                  420 +
-                  (candles.some((bar) => bar.volume !== null) ? 110 : 0) +
-                  lowerPanes * 170,
+                height: `calc(var(--price-pane-height, 352px) + ${(candles.some((bar) => bar.volume !== null) ? 74 : 0) + lowerPanes * 130 + 28}px)`,
               }
             : undefined
         }
         role="img"
+        tabIndex={0}
+        onPointerLeave={() => setHover(null)}
+        onKeyDown={(event) => {
+          if (['ArrowLeft', 'ArrowRight', 'Escape'].includes(event.key))
+            event.preventDefault();
+          if (event.key === 'ArrowLeft') step(-1);
+          if (event.key === 'ArrowRight') step(1);
+          if (event.key === 'Escape') {
+            setPinned(null);
+            setHover(null);
+          }
+        }}
         aria-label={`Interactive ${sourceLabel} ${interval} price chart${candles.some((candle) => candle.volume !== null) ? ' with a volume pane' : '; volume unavailable'}. Drag to pan and scroll to zoom. Exact latest values appear in the summary and legend.`}
       />
     </>

@@ -35,12 +35,14 @@ export function IndicatorControls({
   visible,
   onVisibility,
   items,
+  hideVisibility = false,
 }: {
   parameters: Parameters;
   onParameters: (p: Parameters) => void;
   visible: Visibility;
   onVisibility: (v: Visibility) => void;
   items: IndicatorDefinition[];
+  hideVisibility?: boolean;
 }) {
   const [draft, setDraft] = useState(parameters);
   const [previous, setPrevious] = useState(parameters);
@@ -51,38 +53,40 @@ export function IndicatorControls({
   const [error, setError] = useState('');
   return (
     <div className="indicator-controls">
-      <h3>Indicators</h3>
+      {!hideVisibility && <h3>Indicators</h3>}
       <p className="small">
         Calculated from full finalized history. Display range changes only the
         view. Layout and valid parameters are saved in this browser when storage
         is available.
       </p>
-      <div className="indicator-groups">
-        {(['Price & Trend', 'Momentum', 'Volatility', 'Volume'] as const).map(
-          (group) => (
-            <fieldset key={group}>
-              <legend>{group}</legend>
-              {items
-                .filter((item) => item.group === group)
-                .map((item) => (
-                  <label className="checkbox-label" key={item.id}>
-                    <input
-                      type="checkbox"
-                      checked={visible[item.id]}
-                      onChange={(event) =>
-                        onVisibility({
-                          ...visible,
-                          [item.id]: event.target.checked,
-                        })
-                      }
-                    />
-                    {item.name}
-                  </label>
-                ))}
-            </fieldset>
-          ),
-        )}
-      </div>
+      {!hideVisibility && (
+        <div className="indicator-groups">
+          {(['Price & Trend', 'Momentum', 'Volatility', 'Volume'] as const).map(
+            (group) => (
+              <fieldset key={group}>
+                <legend>{group}</legend>
+                {items
+                  .filter((item) => item.group === group)
+                  .map((item) => (
+                    <label className="checkbox-label" key={item.id}>
+                      <input
+                        type="checkbox"
+                        checked={visible[item.id]}
+                        onChange={(event) =>
+                          onVisibility({
+                            ...visible,
+                            [item.id]: event.target.checked,
+                          })
+                        }
+                      />
+                      {item.name}
+                    </label>
+                  ))}
+              </fieldset>
+            ),
+          )}
+        </div>
+      )}
       <details>
         <summary>Calculation parameters</summary>
         <form

@@ -227,7 +227,7 @@ export function App({
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${dataset ? ' has-dataset' : ''}`}>
       <a className="skip-link" href="#workspace">
         Skip to workspace
       </a>
@@ -448,96 +448,6 @@ export function App({
             </button>
           </div>
         )}
-        {library.datasets.length > 0 && (
-          <GlassPanel
-            className="recent-panel"
-            aria-label="Recent datasets and listings"
-          >
-            <div className="panel-heading">
-              <div>
-                <h2>Recent datasets & listings</h2>
-                <p className="small">
-                  {library.persistent
-                    ? 'Saved in this browser'
-                    : 'Session only'}{' '}
-                  · newest selected first · at most 10 datasets, 100,000 bars
-                  and 20 MiB · oldest datasets evicted at limits
-                </p>
-              </div>
-              <button onClick={openImport}>Import another CSV</button>
-            </div>
-            <div className="recent-list">
-              {library.datasets.map((item) => (
-                <div className="recent-item" key={item.metadata.id}>
-                  <div>
-                    <span className="badge">
-                      {item.metadata.mode.toUpperCase()}
-                    </span>
-                    <strong>{item.metadata.listing.symbol}</strong>
-                    <span className="small">
-                      {item.metadata.listing.exchange ?? 'Exchange unavailable'}{' '}
-                      ·{' '}
-                      {item.metadata.listing.currency ?? 'Currency unavailable'}{' '}
-                      · {item.candles.length.toLocaleString('en-US')} bars
-                      {' · '}
-                      {item.metadata.importConventions?.filename ??
-                        'Synthetic demo'}
-                      {' · '}
-                      {item.metadata.latestCandleTime ?? 'Date unavailable'}
-                    </span>
-                  </div>
-                  <div className="recent-actions">
-                    <button
-                      disabled={working}
-                      aria-label={
-                        'Open dataset ' +
-                        item.metadata.listing.symbol +
-                        ' ' +
-                        item.metadata.mode
-                      }
-                      onClick={() =>
-                        void libraryAction(
-                          () => store.select(item.metadata.id),
-                          () => {
-                            setState({ status: 'ready', dataset: item });
-                            setImportOpen(false);
-                          },
-                        )
-                      }
-                    >
-                      {dataset?.metadata.id === item.metadata.id
-                        ? 'Selected'
-                        : 'Open'}
-                    </button>
-                    <button
-                      disabled={working}
-                      aria-label={
-                        'Delete dataset ' +
-                        item.metadata.listing.symbol +
-                        ' ' +
-                        item.metadata.mode
-                      }
-                      onClick={() =>
-                        void libraryAction(
-                          () => store.delete(item.metadata.id),
-                          () => {
-                            if (dataset?.metadata.id === item.metadata.id)
-                              setState({ status: 'initial' });
-                            setNotice(
-                              'Deleted only this dataset from the local library.',
-                            );
-                          },
-                        )
-                      }
-                    >
-                      Delete Dataset
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </GlassPanel>
-        )}
         {importOpen && (
           <CsvImportPanel
             onImport={(item) => void activate(item)}
@@ -644,6 +554,96 @@ export function App({
             onChangeData={home}
             onHistoryRequirement={historyRequirement}
           />
+        )}
+        {library.datasets.length > 0 && (
+          <GlassPanel
+            className="recent-panel"
+            aria-label="Recent datasets and listings"
+          >
+            <div className="panel-heading">
+              <div>
+                <h2>Recent datasets & listings</h2>
+                <p className="small">
+                  {library.persistent
+                    ? 'Saved in this browser'
+                    : 'Session only'}{' '}
+                  · newest selected first · at most 10 datasets, 100,000 bars
+                  and 20 MiB · oldest datasets evicted at limits
+                </p>
+              </div>
+              <button onClick={openImport}>Import another CSV</button>
+            </div>
+            <div className="recent-list">
+              {library.datasets.map((item) => (
+                <div className="recent-item" key={item.metadata.id}>
+                  <div>
+                    <span className="badge">
+                      {item.metadata.mode.toUpperCase()}
+                    </span>
+                    <strong>{item.metadata.listing.symbol}</strong>
+                    <span className="small">
+                      {item.metadata.listing.exchange ?? 'Exchange unavailable'}{' '}
+                      ·{' '}
+                      {item.metadata.listing.currency ?? 'Currency unavailable'}{' '}
+                      · {item.candles.length.toLocaleString('en-US')} bars
+                      {' · '}
+                      {item.metadata.importConventions?.filename ??
+                        'Synthetic demo'}
+                      {' · '}
+                      {item.metadata.latestCandleTime ?? 'Date unavailable'}
+                    </span>
+                  </div>
+                  <div className="recent-actions">
+                    <button
+                      disabled={working}
+                      aria-label={
+                        'Open dataset ' +
+                        item.metadata.listing.symbol +
+                        ' ' +
+                        item.metadata.mode
+                      }
+                      onClick={() =>
+                        void libraryAction(
+                          () => store.select(item.metadata.id),
+                          () => {
+                            setState({ status: 'ready', dataset: item });
+                            setImportOpen(false);
+                          },
+                        )
+                      }
+                    >
+                      {dataset?.metadata.id === item.metadata.id
+                        ? 'Selected'
+                        : 'Open'}
+                    </button>
+                    <button
+                      disabled={working}
+                      aria-label={
+                        'Delete dataset ' +
+                        item.metadata.listing.symbol +
+                        ' ' +
+                        item.metadata.mode
+                      }
+                      onClick={() =>
+                        void libraryAction(
+                          () => store.delete(item.metadata.id),
+                          () => {
+                            if (dataset?.metadata.id === item.metadata.id)
+                              setState({ status: 'initial' });
+                            setNotice(
+                              'Deleted only this dataset from the local library.',
+                            );
+                          },
+                        )
+                      }
+                    >
+                      Delete Dataset
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassPanel>
         )}
       </main>
       <footer className="app-footer">
