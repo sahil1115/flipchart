@@ -6,7 +6,7 @@ export default defineConfig({
   timeout: 60_000,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: 'http://127.0.0.1:4179',
 
     trace: 'retain-on-failure',
   },
@@ -33,8 +33,8 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      'node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
+      'node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4179 --strictPort',
+    url: 'http://127.0.0.1:4179',
     reuseExistingServer: !process.env.CI,
   },
 });

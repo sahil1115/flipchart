@@ -98,7 +98,7 @@ test('saved CSV reopens offline and SW caches contain app assets only, with no k
   expect(
     urls.every(
       (url) =>
-        url.startsWith('http://127.0.0.1:4173/') &&
+        url.startsWith('http://127.0.0.1:4179/') &&
         !url.includes('fixture') &&
         !url.includes('apikey'),
     ),

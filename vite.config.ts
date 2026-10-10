@@ -5,6 +5,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: process.env.FLIPCHART_BASE ?? '/',
+  server: { host: '127.0.0.1', port: 4179, strictPort: true },
+  preview: { host: '127.0.0.1', port: 4179, strictPort: true },
   plugins: [
     react(),
     tailwindcss(),

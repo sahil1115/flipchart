@@ -1,6 +1,6 @@
 # FlipChart
 
-**Version: [v0.1.3](https://github.com/sahil1115/flipchart/releases/tag/v0.1.3)**
+**Version: [v0.1.4](https://github.com/sahil1115/flipchart/releases/tag/v0.1.4)**
 
 FlipChart is a stock-chart dashboard that runs in your browser. Explore prices, volume, and 15 technical indicators using demo data, your own CSV files, or a market-data API.
 
@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
+Open [http://127.0.0.1:4179](http://127.0.0.1:4179).
 
 No backend, database server, or API key is needed for demo data or CSV imports.
 
@@ -49,7 +49,7 @@ npm run build
 npm run preview
 ```
 
-Open [http://127.0.0.1:4173](http://127.0.0.1:4173). Deploy the complete `dist/` folder to static hosting over HTTPS. For hosting under a repository path, set `FLIPCHART_BASE` to that path (for example, `/flipchart/`) before building.
+Open [http://127.0.0.1:4179](http://127.0.0.1:4179). Deploy the complete `dist/` folder to static hosting over HTTPS. For hosting under a repository path, set `FLIPCHART_BASE` to that path (for example, `/flipchart/`) before building.
 
 The production app supports offline reopening of demo and imported data after an initial online visit. Provider requests require internet access, and live provider data is kept only for the current session. Installation is optional and depends on browser support.
 

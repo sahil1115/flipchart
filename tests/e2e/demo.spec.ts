@@ -6,7 +6,7 @@ for (const width of [375, 768, 1440]) {
     const externalRequests: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('request', (request) => {
-      if (!request.url().startsWith('http://127.0.0.1:4173'))
+      if (!request.url().startsWith('http://127.0.0.1:4179'))
         externalRequests.push(request.url());
     });
     await page.setViewportSize({ width, height: 1000 });
