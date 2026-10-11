@@ -220,6 +220,9 @@ test('exchange selection separates caches; failed refresh preserves the chart an
   fixture.fail(429);
   await page.getByRole('button', { name: 'Refresh loaded data' }).click();
   await expect(page.getByRole('alert')).toContainText('quota is exhausted');
+  await expect(page.locator('.provider-panel')).toContainText(
+    'History was not loaded. Your current chart is unchanged.',
+  );
   await expect(page.getByRole('alert')).not.toContainText(fixtureCredential);
   await expect(
     page.getByRole('region', { name: 'Dataset summary' }),
@@ -246,7 +249,7 @@ test('exchange selection separates caches; failed refresh preserves the chart an
 });
 for (const [failure, message] of [
   [401, 'rejected the key'],
-  [404, 'listing is unavailable'],
+  [404, 'could not return history for this listing'],
   [500, 'temporarily unavailable'],
   ['network', 'Could not reach Twelve Data'],
 ] as const) {
@@ -261,6 +264,9 @@ for (const [failure, message] of [
       .getByRole('button', { name: 'Load history', exact: true })
       .click();
     await expect(page.getByRole('alert')).toContainText(message);
+    await expect(page.locator('.provider-panel')).toContainText(
+      'History was not loaded. No chart data is available yet.',
+    );
     await expect(page.locator('.provider-results > li')).toHaveCount(1);
     await expect(page.getByRole('alert')).not.toContainText(fixtureCredential);
     await expect(page.getByTestId('price-chart')).toHaveCount(0);

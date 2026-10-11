@@ -233,7 +233,11 @@ export function ProviderPanel({
       )
         return;
       setError(safeError(error));
-      setStatus('Loaded chart retained.');
+      setStatus(
+        activeDataset
+          ? 'History was not loaded. Your current chart is unchanged.'
+          : 'History was not loaded. No chart data is available yet.',
+      );
       if (refresh) onRefreshFailure(token);
     } finally {
       if (localToken === operation.current) setBusy(false);

@@ -29,7 +29,7 @@ const messages = {
   'quota-exhausted':
     'Twelve Data quota is exhausted. Check your account limits; no automatic retry will run.',
   'unsupported-listing':
-    'This listing is unavailable. Select a supported stock or ETF on the correct exchange.',
+    'Twelve Data could not return history for this listing. Search results do not confirm history access. Check your account’s market coverage and the selected exchange, or import an OHLCV CSV.',
   'unsupported-interval':
     'This provider request interval is unavailable. Load daily history and use the labeled local weekly/monthly view.',
   'unsupported-endpoint':
@@ -127,6 +127,13 @@ function responseError(
   if (code === 429) fail('quota-exhausted', retryAt);
   if (code >= 500) fail('provider-outage');
   if (code === 403) fail('unsupported-endpoint');
+  if (
+    /subscription|subscribe|premium|upgrade|add-on|permission|entitlement/.test(
+      hint,
+    ) ||
+    /(?:available|accessible|access).{0,80}(?:plan|tier)/.test(hint)
+  )
+    fail('unsupported-endpoint');
   if (/insufficient|not enough|history limit/.test(hint))
     fail('insufficient-history');
   if (/no data|empty/.test(hint)) fail('empty-response');

@@ -104,6 +104,12 @@ describe('typed failure paths and redaction', () => {
     [429, 'quota', 'quota-exhausted'],
     [403, 'premium', 'unsupported-endpoint'],
     [404, 'unknown', 'unsupported-listing'],
+    [
+      404,
+      'This symbol requires a subscription upgrade',
+      'unsupported-endpoint',
+    ],
+    [400, 'This symbol is available on the Grow plan', 'unsupported-endpoint'],
     [400, 'unsupported interval', 'unsupported-interval'],
     [400, 'insufficient history', 'insufficient-history'],
     [400, 'no data available', 'empty-response'],
