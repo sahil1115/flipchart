@@ -34,7 +34,7 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    command: `node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port ${port} --strictPort`,
+    command: `node scripts/vite.mjs preview --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
   },

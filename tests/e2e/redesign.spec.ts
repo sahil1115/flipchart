@@ -75,6 +75,16 @@ for (const width of [375, 1440]) {
       priceBounds!.x + priceBounds!.width / 2,
       priceBounds!.y + 110,
     );
+    await expect(page.locator('.chart-legend .inspection-mode')).toHaveText(
+      'Cursor',
+    );
+    // React commits the crosshair readout after the native pointer event.
+    await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    );
     const hoverDate = (await page
       .locator('.chart-legend')
       .textContent())!.match(/\d{4}-\d{2}-\d{2}/)![0];
