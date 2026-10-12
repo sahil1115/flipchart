@@ -296,6 +296,41 @@ export function SplitChart({
   const charts = useRef(new Map<string, IChartApi>());
   const viewport = useRef<Window>(null);
   const syncing = useRef(false);
+  const axisFrame = useRef<number | null>(null);
+  const alignAxes = useCallback(() => {
+    if (axisFrame.current !== null) return;
+    axisFrame.current = requestAnimationFrame(() => {
+      axisFrame.current = null;
+      // Labels can exceed minimumWidth, depending on the data and installed font.
+      // Give every pane the widest axis so an x-coordinate maps to the same date.
+      const width = Math.max(
+        0,
+        ...Array.from(charts.current.values(), (chart) =>
+          chart.priceScale('right').width(),
+        ),
+      );
+      const window = viewport.current;
+      syncing.current = true;
+      try {
+        charts.current.forEach((chart) => {
+          const axis = chart.priceScale('right');
+          if (axis.options().minimumWidth < width) {
+            axis.applyOptions({ minimumWidth: width });
+            if (window) chart.timeScale().setVisibleLogicalRange(window);
+          }
+        });
+      } finally {
+        syncing.current = false;
+      }
+    });
+  }, []);
+  useEffect(
+    () => () => {
+      if (axisFrame.current !== null) cancelAnimationFrame(axisFrame.current);
+      axisFrame.current = null;
+    },
+    [],
+  );
   const [cursor, setCursor] = useState<TradingDate | null>(null);
   const inspector = useRef<((request: Inspection) => void) | null>(null);
   const moveWindow = useCallback(
@@ -311,18 +346,27 @@ export function SplitChart({
     },
     [onVisibleWindow],
   );
-  const register = useCallback((key: string, chart: IChartApi | null) => {
-    if (!chart) {
-      charts.current.delete(key);
-      return;
-    }
-    charts.current.set(key, chart);
-    if (viewport.current) {
-      syncing.current = true;
-      chart.timeScale().setVisibleLogicalRange(viewport.current);
-      syncing.current = false;
-    }
-  }, []);
+  const register = useCallback(
+    (key: string, chart: IChartApi | null) => {
+      const previous = charts.current.get(key);
+      if (previous !== chart) {
+        previous?.timeScale().unsubscribeSizeChange(alignAxes);
+        chart?.timeScale().subscribeSizeChange(alignAxes);
+      }
+      if (!chart) {
+        charts.current.delete(key);
+        return;
+      }
+      charts.current.set(key, chart);
+      if (viewport.current) {
+        syncing.current = true;
+        chart.timeScale().setVisibleLogicalRange(viewport.current);
+        syncing.current = false;
+      }
+      alignAxes();
+    },
+    [alignAxes],
+  );
   const lower = props.indicators?.find((item) => item.id === props.activePane);
   const volumeAverage = props.visible?.volumeAverage
     ? props.indicators?.find((item) => item.id === 'volumeAverage')

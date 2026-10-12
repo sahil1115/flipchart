@@ -69,6 +69,19 @@ for (const width of [375, 1440]) {
         .toBe(height);
       await expect(close).toHaveText(latest!);
     }
+    await expect
+      .poll(() =>
+        page.locator('.split-charts').evaluate((element) => {
+          const widths = ['price-chart', 'volume-chart', 'indicator-chart'].map(
+            (id) =>
+              element
+                .querySelector(`[data-testid="${id}"] canvas`)!
+                .getBoundingClientRect().width,
+          );
+          return widths.every((width) => width > 0 && width === widths[0]);
+        }),
+      )
+      .toBe(true);
     await chart.scrollIntoViewIfNeeded();
     const priceBounds = await chart.boundingBox();
     await page.mouse.move(
@@ -77,13 +90,6 @@ for (const width of [375, 1440]) {
     );
     await expect(page.locator('.chart-legend .inspection-mode')).toHaveText(
       'Cursor',
-    );
-    // React commits the crosshair readout after the native pointer event.
-    await page.evaluate(
-      () =>
-        new Promise((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(resolve)),
-        ),
     );
     const hoverDate = (await page
       .locator('.chart-legend')

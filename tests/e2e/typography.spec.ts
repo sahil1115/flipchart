@@ -70,6 +70,19 @@ for (const width of [375, 1440]) {
       .toBeCloseTo(originalSize * 1.4, 1);
     await expect(legend).toContainText(date);
     await expect(rsi.locator('strong')).toHaveText(value!);
+    await expect
+      .poll(() =>
+        page.locator('.split-charts').evaluate((element) => {
+          const widths = ['price-chart', 'volume-chart', 'indicator-chart'].map(
+            (id) =>
+              element
+                .querySelector(`[data-testid="${id}"] canvas`)!
+                .getBoundingClientRect().width,
+          );
+          return widths.every((width) => width > 0 && width === widths[0]);
+        }),
+      )
+      .toBe(true);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

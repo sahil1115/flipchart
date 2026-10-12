@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { StrictMode } from 'react';
-import { act, cleanup, render, fireEvent } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  render,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { glassLight } from '../themes/themes';
 import { createDemoDataset } from '../demo/dataset';
@@ -23,6 +29,13 @@ const mocks = vi.hoisted(() => {
     getRange: ReturnType<typeof vi.fn>;
     subscribeWindow: ReturnType<typeof vi.fn>;
     unsubscribeWindow: ReturnType<typeof vi.fn>;
+    subscribeSize: ReturnType<typeof vi.fn>;
+    unsubscribeSize: ReturnType<typeof vi.fn>;
+    axis: {
+      width: ReturnType<typeof vi.fn>;
+      options: ReturnType<typeof vi.fn>;
+      applyOptions: ReturnType<typeof vi.fn>;
+    };
   }[] = [];
   const createChart = vi.fn(() => {
     const range = vi.fn();
@@ -40,6 +53,14 @@ const mocks = vi.hoisted(() => {
       getRange,
       subscribeWindow: vi.fn(),
       unsubscribeWindow: vi.fn(),
+      subscribeSize: vi.fn(),
+      unsubscribeSize: vi.fn(),
+      axis: {
+        width: vi.fn(() => 64),
+        options: vi.fn(() => ({ minimumWidth: 64 })),
+        applyOptions: vi.fn(),
+      },
+      priceScale: () => chart.axis,
       removeSeries: vi.fn(),
       addSeries: vi.fn(() => ({
         setData: vi.fn(),
@@ -55,6 +76,8 @@ const mocks = vi.hoisted(() => {
         getVisibleLogicalRange: getRange,
         subscribeVisibleLogicalRangeChange: chart.subscribeWindow,
         unsubscribeVisibleLogicalRangeChange: chart.unsubscribeWindow,
+        subscribeSizeChange: chart.subscribeSize,
+        unsubscribeSizeChange: chart.unsubscribeSize,
       }),
     };
     instances.push(chart);
@@ -163,7 +186,7 @@ describe('chart ownership', () => {
       pinned,
     );
   });
-  it('synchronizes split plot ranges and inspection, and cleans up every chart', () => {
+  it('synchronizes split plot ranges, axis widths and inspection, and cleans up every chart', async () => {
     const onCursor = vi.fn();
     const items = definitions(calculate(candles, defaults), defaults);
     const view = render(
@@ -185,6 +208,17 @@ describe('chart ownership', () => {
     act(() => mocks.instances[1]!.subscribeWindow.mock.calls[0]![0](window));
     expect(mocks.instances[0]!.range).toHaveBeenLastCalledWith(window);
     expect(mocks.instances[2]!.range).toHaveBeenLastCalledWith(window);
+    // A wider volume label must not move its dates relative to the price plot.
+    mocks.instances[1]!.axis.width.mockReturnValue(70);
+    act(() => mocks.instances[1]!.subscribeSize.mock.calls[0]![0](1000, 86));
+    await waitFor(() => {
+      for (const chart of mocks.instances) {
+        expect(chart.axis.applyOptions).toHaveBeenLastCalledWith({
+          minimumWidth: 70,
+        });
+        expect(chart.range).toHaveBeenLastCalledWith(window);
+      }
+    });
     const time = candles.at(-2)!.time;
     act(() =>
       mocks.instances[2]!.subscribeClick.mock.calls[0]![0]({
@@ -199,6 +233,9 @@ describe('chart ownership', () => {
       expect(chart.unsubscribeCrosshairMove).toHaveBeenCalledTimes(1);
       expect(chart.unsubscribeClick).toHaveBeenCalledTimes(1);
       expect(chart.unsubscribeWindow).toHaveBeenCalledTimes(1);
+      expect(chart.unsubscribeSize).toHaveBeenCalledExactlyOnceWith(
+        chart.subscribeSize.mock.calls[0]![0],
+      );
     }
   });
   it('pairs every listener and instance with cleanup through StrictMode and repeated remounts', () => {
