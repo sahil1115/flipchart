@@ -3,9 +3,13 @@ import { GlassPanel } from '../../components/GlassPanel';
 import { SplitChart } from '../../charts/SplitChart';
 import type { Dataset, TradingDate } from '../../data/types';
 import type { Parameters } from '../../indicators/core';
-import type { IndicatorId, Visibility } from '../../indicators/presentation';
+import type {
+  IndicatorId,
+  MomentumId,
+  Visibility,
+} from '../../indicators/presentation';
 import { calculateDataset } from '../../indicators/core';
-import { definitions } from '../../indicators/presentation';
+import { definitions, momentumIds } from '../../indicators/presentation';
 import { IndicatorControls } from './IndicatorControls';
 import { IndicatorCard } from './IndicatorCard';
 import { useWorkspace } from '../../state/workspace';
@@ -21,7 +25,7 @@ import { formatValue, paneLabels } from './readout';
 
 const plotGroups = {
   'Price & Trend': ['adx'],
-  Momentum: ['rsi', 'macd', 'stochastic', 'cci', 'williams', 'roc'],
+  Momentum: momentumIds,
   Volatility: ['atr', 'volatility'],
   Volume: ['obv'],
 } as const;
@@ -52,6 +56,7 @@ export function DatasetWorkspace({
     chartVisible,
     expanded,
     activePane: selectedPane,
+    momentumOverlay,
     saved,
     update,
     reset,
@@ -81,8 +86,8 @@ export function DatasetWorkspace({
     Volatility: selectedPane === 'volatility' ? 'volatility' : 'atr',
     Volume: 'obv',
   });
-  const choosePane = (id: IndicatorId) => {
-    setGroupSelection((previous) => ({ ...previous, [plotGroup]: id }));
+  const choosePane = (id: IndicatorId, group: PlotGroup = plotGroup) => {
+    setGroupSelection((previous) => ({ ...previous, [group]: id }));
     update({ activePane: id });
   };
   const [requestedInterval, setInterval] =
@@ -178,6 +183,12 @@ export function DatasetWorkspace({
       </GlassPanel>
     );
   const metadata = dataset.metadata;
+  const providerName =
+    metadata.provider === 'yahoo-finance'
+      ? 'Yahoo Finance'
+      : metadata.provider === 'alpha-vantage'
+        ? 'Alpha Vantage'
+        : 'Twelve Data';
   const inspectedBar = cursor
     ? (dataset.candles.find((bar) => bar.time === cursor) ?? latest)
     : latest;
@@ -453,6 +464,26 @@ export function DatasetWorkspace({
                   ))}
               </div>
             </div>
+            <label className="toolbar-segment momentum-control">
+              <span className="metric-label">MOMENTUM</span>
+              <select
+                aria-label="Momentum overlay"
+                value={momentumOverlay ?? ''}
+                onChange={(event) =>
+                  update({
+                    momentumOverlay: (event.target.value ||
+                      null) as MomentumId | null,
+                  })
+                }
+              >
+                <option value="">None</option>
+                {plotGroups.Momentum.map((id) => (
+                  <option key={id} value={id}>
+                    {paneLabels[id]}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button className="reset-button" onClick={resetChart}>
               Reset view <span aria-hidden="true">↺</span>
             </button>
@@ -509,27 +540,21 @@ export function DatasetWorkspace({
               demo
                 ? 'synthetic'
                 : live
-                  ? `${metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'} provider`
+                  ? `${providerName} provider`
                   : 'imported'
             }
             indicators={items}
             interval={interval}
             activePane={activePane ?? null}
+            momentumOverlay={momentumOverlay}
             visible={chartVisible}
             onCursor={updateCursor}
             onVisibleWindow={updateWindow}
           />
           <div className="chart-footnote">
             <span>
-              {demo
-                ? 'Synthetic'
-                : live
-                  ? metadata.provider === 'alpha-vantage'
-                    ? 'Alpha Vantage'
-                    : 'Twelve Data'
-                  : 'Imported'}{' '}
-              {interval} candles ·{' '}
-              {dataset.candles.length.toLocaleString('en-US')} bars ·{' '}
+              {demo ? 'Synthetic' : live ? providerName : 'Imported'} {interval}{' '}
+              candles · {dataset.candles.length.toLocaleString('en-US')} bars ·{' '}
               {metadata.adjustment} prices
             </span>
             <span>
@@ -725,7 +750,7 @@ export function DatasetWorkspace({
           {demo
             ? 'Generated prices for an imaginary listing. Weekday cadence; no actual exchange calendar or market feed.'
             : live
-              ? `Data provided by ${metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'}. Account/market access and available history vary. Native exchange dates are preserved; current-period bars are provisional. Adjustment: ${metadata.adjustment}.`
+              ? `${metadata.source}. ${metadata.provider === 'yahoo-finance' ? 'Yahoo availability and corporate-action adjustments are unverified.' : 'Account/market access and available history vary.'} Native exchange dates are preserved; current-period bars are provisional. Adjustment: ${metadata.adjustment}.`
               : 'User-owned CSV; prices and metadata supplied by you, with no live market verification.'}{' '}
           Coverage {metadata.coverage?.from} – {metadata.coverage?.to}.{' '}
           {metadata.importConventions?.timezoneInterpretation}

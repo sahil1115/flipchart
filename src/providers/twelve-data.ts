@@ -17,6 +17,7 @@ export interface ConnectionReport {
   plan: string | null;
 }
 export interface ConnectedProvider extends MarketDataProvider {
+  readonly requiresCredential?: boolean;
   testConnection(
     credential: string,
     signal: AbortSignal,

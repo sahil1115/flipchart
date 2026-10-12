@@ -72,6 +72,68 @@ for (const width of [375, 1440]) {
     await expect(
       page.getByTestId('indicator-chart').locator('canvas').first(),
     ).toBeVisible();
+    const momentum = page.getByRole('combobox', { name: 'Momentum overlay' });
+    await expect(momentum).toHaveValue('');
+    const readoutSelections = () =>
+      page
+        .locator('.readout-rail input[type="checkbox"]')
+        .evaluateAll((inputs) =>
+          inputs.map((input) => ({
+            label: input.getAttribute('aria-label'),
+            checked: (input as HTMLInputElement).checked,
+          })),
+        );
+    const selections = await readoutSelections();
+    const priceBeforeMomentum = await snapshot();
+    const lowerDrawing = async () => {
+      const images = await page
+        .getByTestId('indicator-chart')
+        .locator('canvas')
+        .evaluateAll(async (canvases) => {
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          );
+          return canvases.map((canvas) =>
+            (canvas as HTMLCanvasElement).toDataURL(),
+          );
+        });
+      return createHash('sha256').update(JSON.stringify(images)).digest('hex');
+    };
+    const lowerBeforeMomentum = await lowerDrawing();
+    for (const [id, name] of [
+      ['macd', 'MACD'],
+      ['stochastic', 'Stochastic'],
+      ['cci', 'CCI'],
+      ['williams', 'Williams'],
+      ['roc', 'ROC'],
+      ['rsi', 'RSI'],
+    ]) {
+      await momentum.selectOption(id!);
+      await expect(page.getByTestId('momentum-overlay-legend')).toContainText(
+        new RegExp(name!, 'i'),
+      );
+      await expect(page.getByTestId('momentum-overlay-legend')).toContainText(
+        'independent scale',
+      );
+      await expect(
+        page.getByRole('button', { name: 'Plot OBV', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(await readoutSelections()).toEqual(selections);
+      expect(await snapshot()).not.toEqual(priceBeforeMomentum);
+      expect(await lowerDrawing()).toEqual(lowerBeforeMomentum);
+    }
+    await momentum.selectOption('');
+    await expect(page.getByTestId('momentum-overlay-legend')).toHaveCount(0);
+    expect(await snapshot()).toEqual(priceBeforeMomentum);
+    await momentum.selectOption('macd');
+    await page
+      .getByRole('group', { name: 'Indicator categories' })
+      .getByRole('button', { name: 'Momentum', exact: true })
+      .click();
+    await expect(
+      page.getByRole('button', { name: 'Plot RSI', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(momentum).toHaveValue('macd');
     const rsi = page.getByRole('article', { name: 'RSI 14', exact: true });
     const expand = page.getByRole('button', { name: 'Expand', exact: true });
     await expect(expand).toHaveCount(1);
@@ -96,6 +158,7 @@ for (const width of [375, 1440]) {
       await rsi.evaluate((element) => element.getBoundingClientRect().height),
     ).toBeGreaterThan(compactHeight);
     await page.reload();
+    await expect(momentum).toHaveValue('macd');
     await expect(expand).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('.dock-card:not(.expanded)')).toHaveCount(0);
     await expect(

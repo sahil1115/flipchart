@@ -1,21 +1,21 @@
 {
   "name": "flipchart",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "node scripts/vite.mjs --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "npm run typecheck && npm run notices && vite build",
-    "preview": "vite preview --host 127.0.0.1",
+    "build": "npm run typecheck && npm run notices && node scripts/vite.mjs build",
+    "preview": "node scripts/vite.mjs preview --host 127.0.0.1",
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build",
     "notices": "node scripts/notices.mjs",

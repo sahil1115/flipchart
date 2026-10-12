@@ -81,6 +81,46 @@ afterEach(() => {
 });
 const candles = createDemoDataset('2026-10-09T00:00:00Z').candles;
 describe('chart ownership', () => {
+  it('overlays momentum in the price pane on its own scale, independently of readout visibility', () => {
+    const items = definitions(calculate(candles, defaults), defaults);
+    const props = {
+      candles,
+      theme: glassLight,
+      style: 'candles' as const,
+      range: '6M' as const,
+      resetRevision: 0,
+      indicators: items,
+      visible: { ...defaultVisibility, rsi: false },
+      priceOnly: true,
+      activePane: 'obv' as const,
+    };
+    const view = render(<PriceChart {...props} momentumOverlay="rsi" />);
+    const chart = mocks.instances[0]!;
+    const overlay = chart.addSeries.mock.calls.find(
+      (call) => call[1]?.priceScaleId === 'momentum-overlay',
+    );
+    expect(overlay).toBeDefined();
+    expect(overlay![2]).toBe(0);
+    expect(overlay![1].autoscaleInfoProvider()).toEqual({
+      priceRange: { minValue: 0, maxValue: 100 },
+    });
+    expect(view.getByTestId('momentum-overlay-legend').textContent).toContain(
+      'independent scale',
+    );
+    fireEvent.click(view.getByRole('button', { name: 'Inspect previous bar' }));
+    const date = candles.at(-2)!.time;
+    expect(
+      view.container.querySelector('.chart-legend')!.textContent,
+    ).toContain(date);
+    view.rerender(<PriceChart {...props} momentumOverlay={null} />);
+    expect(chart.removeSeries).toHaveBeenCalled();
+    expect(view.queryByTestId('momentum-overlay-legend')).toBeNull();
+    expect(
+      view.container.querySelector('.chart-legend')!.textContent,
+    ).toContain(date);
+    expect(mocks.createChart).toHaveBeenCalledTimes(1);
+    expect(chart.range).toHaveBeenLastCalledWith({ from: 648, to: 782 });
+  });
   it('changes chart-label typography without replacing the chart or clearing a pinned inspection', () => {
     const view = render(
       <TypographyContext value={defaultTypography}>

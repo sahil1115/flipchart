@@ -29,6 +29,7 @@ import { Landing } from '../features/dashboard/Landing';
 import { ProviderPanel } from '../features/settings/ProviderPanel';
 import { AlphaVantageProvider } from '../providers/alpha-vantage';
 import { TwelveDataProvider } from '../providers/twelve-data';
+import { YahooFinanceProvider } from '../providers/yahoo-finance';
 import type { ConnectedProvider } from '../providers/twelve-data';
 import { LiveSession } from '../providers/live-session';
 import { useDashboard } from '../state/dashboard';
@@ -284,7 +285,7 @@ export function App({
                 ? 'Synthetic demo'
                 : dataset.metadata.mode === 'import'
                   ? 'Imported CSV'
-                  : `${dataset.metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'} · ${dataset.metadata.interval}`
+                  : `${dataset.metadata.provider === 'yahoo-finance' ? 'Yahoo Finance' : dataset.metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'} · ${dataset.metadata.interval}`
               : 'No data loaded'}
             <span className="badge">
               {dataset?.metadata.mode === 'live' ? 'PROVIDER' : 'LOCAL'}
@@ -531,9 +532,11 @@ export function App({
                   live.disconnect();
                   connectionChanged();
                   const selectedProvider =
-                    event.target.value === 'alpha-vantage'
-                      ? new AlphaVantageProvider()
-                      : new TwelveDataProvider();
+                    event.target.value === 'yahoo-finance'
+                      ? new YahooFinanceProvider()
+                      : event.target.value === 'alpha-vantage'
+                        ? new AlphaVantageProvider()
+                        : new TwelveDataProvider();
                   const saved = readCredential(selectedProvider.id);
                   setConnection({
                     saved,
@@ -546,6 +549,7 @@ export function App({
               >
                 <option value="twelve-data">Twelve Data</option>
                 <option value="alpha-vantage">Alpha Vantage</option>
+                <option value="yahoo-finance">Yahoo Finance · NSE India</option>
               </select>
               <span className="small">
                 Switching clears the old session, requests and loaded provider
@@ -750,9 +754,11 @@ export function App({
             {dataset?.metadata.mode === 'live' && (
               <a
                 href={
-                  dataset.metadata.provider === 'alpha-vantage'
-                    ? 'https://www.alphavantage.co/'
-                    : 'https://twelvedata.com/'
+                  dataset.metadata.provider === 'yahoo-finance'
+                    ? 'https://finance.yahoo.com/'
+                    : dataset.metadata.provider === 'alpha-vantage'
+                      ? 'https://www.alphavantage.co/'
+                      : 'https://twelvedata.com/'
                 }
                 target="_blank"
                 rel="noreferrer"
@@ -775,6 +781,15 @@ export function App({
             </a>
           </div>
           <div id="offline-readiness" />
+          <p className="footer-disclaimer">
+            <strong>Disclaimer:</strong> FlipChart is for informational and
+            educational purposes only and is not financial advice. Data and
+            indicator calculations may be delayed, incomplete, or inaccurate.
+            Independently verify prices and results with reliable sources before
+            making any investment decision. You are responsible for your
+            decisions; FlipChart and its contributors accept no responsibility
+            for losses arising from use of this app.
+          </p>
         </footer>
       </div>
     </TypographyContext>

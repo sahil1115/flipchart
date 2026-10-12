@@ -17,6 +17,15 @@ export type IndicatorId =
   | 'roc'
   | 'volatility';
 export type Visibility = Record<IndicatorId, boolean>;
+export const momentumIds = [
+  'rsi',
+  'macd',
+  'stochastic',
+  'cci',
+  'williams',
+  'roc',
+] as const;
+export type MomentumId = (typeof momentumIds)[number];
 export const defaultVisibility: Visibility = {
   sma: true,
   ema: false,

@@ -87,7 +87,7 @@ export class LiveSession {
     if (credential) this.credential = validateCredential(credential);
   }
   get connected() {
-    return this.credential !== '';
+    return this.provider.requiresCredential === false || this.credential !== '';
   }
   get accessProfile(): AccessProfile {
     return { ...this.profile };

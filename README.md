@@ -1,6 +1,6 @@
 # FlipChart
 
-**Version: [v0.1.6](https://github.com/sahil1115/flipchart/releases/tag/v0.1.6)**
+**Version: [v0.1.7](https://github.com/sahil1115/flipchart/releases/tag/v0.1.7)**
 
 FlipChart is a stock-chart dashboard that runs in your browser. Explore prices, volume, and 15 technical indicators using demo data, your own CSV files, or a market-data API.
 
@@ -25,6 +25,7 @@ No backend, database server, or API key is needed for demo data or CSV imports.
 - Choose **Import CSV** to load daily price data from a file.
 - Choose a category below the price and volume charts, then choose an indicator. Select readout checkboxes in the dock to choose which values to display.
 - Chart overlays and tabs work independently from the readout checkboxes. Use **Expand** at the top of the readout to toggle details for all cards.
+- Use the **Momentum** dropdown beside Overlays to draw RSI, MACD, Stoch, CCI, %R, or ROC over the main price chart on an independent scale. Choose **None** to remove it. Lower chart tabs and readout selections remain independent.
 - Hover to inspect, click or tap to pin a bar, and use the arrow buttons to step through history.
 - Pan and zoom the chart, change the date range, and adjust calculation parameters below the workspace.
 - Save listings to your watchlist and export chart data as CSV.
@@ -57,7 +58,11 @@ Screenshots use the built-in synthetic demo data.
 3. Enter the key and select **Use key**.
 4. Optionally test the connection, then search for a listing and load its history.
 
-Requests use your provider account and its limits. A connection test can use API credits. Available markets and history depend on your subscription; data refreshes when you request it.
+For **Yahoo Finance NSE India**, choose it in **Data connection**, enter an NSE trading symbol such as `RELIANCE`, `TCS`, or `INFY`, select the `.NS` listing, and choose **Load history**. No API key is needed. Daily history is loaded; weekly/monthly views are calculated locally. Company-name lookup is not supported.
+
+Yahoo uses an unofficial personal-use endpoint through a local relay included in `npm run dev` and `npm run preview`. It may be unavailable or rate limited. Pure static hosting does not include this relay; use CSV imports or another provider there. Yahoo OHLC is used as supplied, with corporate-action adjustment marked unverified. Independently verify data and calculations before making decisions.
+
+Key-based providers use your account and its limits. A connection test can use API credits. Available markets and history depend on your subscription; data refreshes when you request it.
 
 Keys stay in memory unless you select **Remember on this device**. Remembered keys use browser storage. Disconnect removes the saved key. Never commit API keys to Git.
 

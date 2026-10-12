@@ -63,7 +63,7 @@ export function Landing({
           </span>
           <div>
             <h2>Connect a provider</h2>
-            <p>Use your own market-data key.</p>
+            <p>Connect market data, including NSE India.</p>
           </div>
           <button onClick={onProvider}>
             Connect Provider <span aria-hidden="true">→</span>

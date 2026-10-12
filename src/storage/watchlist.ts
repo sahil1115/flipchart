@@ -14,7 +14,11 @@ export function validateWatchlist(input: unknown): WatchEntry[] {
     throw new Error('Invalid watchlist');
   const entries = raw.entries.map((value) => {
     const entry = object(value, 'watch entry');
-    if (!['alpha-vantage', 'twelve-data'].includes(String(entry.provider)))
+    if (
+      !['alpha-vantage', 'twelve-data', 'yahoo-finance'].includes(
+        String(entry.provider),
+      )
+    )
       throw new Error('Unknown provider');
     const listing = validateListing(entry.listing);
     if (!listing.id.startsWith(`live:${String(entry.provider)}:`))

@@ -51,7 +51,12 @@ export function ProviderPanel({
       );
   }
   const alpha = session.provider.id === 'alpha-vantage';
-  const providerName = alpha ? 'Alpha Vantage' : 'Twelve Data';
+  const yahoo = session.provider.id === 'yahoo-finance';
+  const providerName = yahoo
+    ? 'Yahoo Finance'
+    : alpha
+      ? 'Alpha Vantage'
+      : 'Twelve Data';
   const [interval, setInterval] =
     useState<Dataset['metadata']['interval']>('daily');
   const [historySize, setHistorySize] = useState<'compact' | 'full'>('compact');
@@ -81,16 +86,20 @@ export function ProviderPanel({
       return;
     const generation = ++searchGeneration.current;
     const timer = setTimeout(() => {
-      setSearchStatus('Searching Twelve Data…');
+      setSearchStatus(
+        yahoo ? 'Preparing NSE symbol…' : `Searching ${providerName}…`,
+      );
       void session
         .search(query)
         .then((matches) => {
           if (generation !== searchGeneration.current) return;
           setResults(matches);
           setSearchStatus(
-            matches.length
-              ? `${matches.length} stock/ETF matches. Select the exchange you need.`
-              : 'No supported stock/ETF matches. Try another symbol or company name.',
+            yahoo
+              ? 'NSE symbol candidate. Select it, then Load history to verify availability.'
+              : matches.length
+                ? `${matches.length} stock/ETF matches. Select the exchange you need.`
+                : 'No supported stock/ETF matches. Try another symbol or company name.',
           );
         })
         .catch((error) => {
@@ -108,7 +117,7 @@ export function ProviderPanel({
       searchGeneration.current = generation + 1;
       session.cancelSearch();
     };
-  }, [open, connected, query, session, providerName, searchCollapsed]);
+  }, [open, connected, query, session, providerName, yahoo, searchCollapsed]);
   useEffect(() => {
     if (!open) return;
     const shortcut = (event: KeyboardEvent) => {
@@ -137,7 +146,7 @@ export function ProviderPanel({
     const token = ++operation.current;
     setBusy(true);
     setError('');
-    setStatus('Testing Twelve Data connection…');
+    setStatus(`Testing ${providerName} connection…`);
     try {
       const report = await session.testConnection();
       if (token !== operation.current) return;
@@ -198,7 +207,12 @@ export function ProviderPanel({
             to: exchangeDate(listing.timezone),
             accessProfile: session.accessProfile,
           }
-        : { ...baseRequest, interval, historySize };
+        : {
+            ...baseRequest,
+            interval,
+            historySize,
+            ...(yahoo ? { adjustment: 'unknown' as const } : {}),
+          };
     if (alpha && !refresh && interval !== 'daily') {
       const start = new Date(`${request.to}T12:00:00Z`);
       start.setUTCFullYear(
@@ -253,8 +267,9 @@ export function ProviderPanel({
         <div>
           <h2>Connect {providerName}</h2>
           <p>
-            Direct browser connection · use your own account within its data
-            access and display rights.
+            {yahoo
+              ? 'NSE India · no API key · unofficial Yahoo Finance history for personal use.'
+              : 'Direct browser connection · use your own account within its data access and display rights.'}
           </p>
         </div>
         <button
@@ -267,127 +282,140 @@ export function ProviderPanel({
           Close connection panel
         </button>
       </div>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          try {
-            operation.current++;
-            session.useCredential(key);
-            setConnected(true);
-            setReport(null);
-            setResults([]);
-            setSelected(null);
-            setQuery('');
-            setBusy(false);
-            setError('');
-            setStatus(
-              'Key set for this session. Test Connection or search a listing to check access.',
-            );
-            onConnectionChanged();
-            setWarning(
-              writeCredential(key, remember, session.provider.id)
-                ? ''
-                : remember
-                  ? 'Could not save the key. Connection works for this session only.'
-                  : 'Could not remove the saved key. Session use continues; remove this site’s storage before sharing the device.',
-            );
-          } catch (error) {
-            setError(safeError(error));
-          }
-        }}
-      >
-        <label>
-          API key
-          <input
-            aria-label={`${providerName} API key`}
-            type={shown ? 'text' : 'password'}
-            autoComplete="off"
-            spellCheck={false}
-            value={key}
-            onChange={(event) => setKey(event.target.value)}
-          />
-        </label>
-        <div className="provider-actions">
-          <button
-            type="button"
-            aria-pressed={shown}
-            onClick={() => setShown(!shown)}
-          >
-            {shown ? 'Hide key' : 'Show key'}
-          </button>
-          <button type="submit">Use key</button>
-          <button
-            type="button"
-            disabled={!connected || busy}
-            onClick={() => void testConnection()}
-          >
-            Test Connection
-          </button>
-          <button
-            type="button"
-            disabled={!connected && !saved.remembered}
-            onClick={() => {
+      {!yahoo && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            try {
               operation.current++;
-              session.disconnect();
-              setKey('');
-              setShown(false);
-              setRemember(false);
-              setConnected(false);
+              session.useCredential(key);
+              setConnected(true);
               setReport(null);
               setResults([]);
               setSelected(null);
               setQuery('');
-              setError('');
               setBusy(false);
-              setStatus('Disconnected. Demo/import library retained.');
+              setError('');
+              setStatus(
+                'Key set for this session. Test Connection or search a listing to check access.',
+              );
               onConnectionChanged();
               setWarning(
-                writeCredential('', false, session.provider.id)
+                writeCredential(key, remember, session.provider.id)
                   ? ''
-                  : 'Session disconnected, but saved-key deletion failed. Remove this site’s storage before sharing the device.',
+                  : remember
+                    ? 'Could not save the key. Connection works for this session only.'
+                    : 'Could not remove the saved key. Session use continues; remove this site’s storage before sharing the device.',
               );
-            }}
-          >
-            Disconnect
-          </button>
-        </div>
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(event) => {
-              setRemember(event.target.checked);
-              if (!event.target.checked)
+            } catch (error) {
+              setError(safeError(error));
+            }
+          }}
+        >
+          <label>
+            API key
+            <input
+              aria-label={`${providerName} API key`}
+              type={shown ? 'text' : 'password'}
+              autoComplete="off"
+              spellCheck={false}
+              value={key}
+              onChange={(event) => setKey(event.target.value)}
+            />
+          </label>
+          <div className="provider-actions">
+            <button
+              type="button"
+              aria-pressed={shown}
+              onClick={() => setShown(!shown)}
+            >
+              {shown ? 'Hide key' : 'Show key'}
+            </button>
+            <button type="submit">Use key</button>
+            <button
+              type="button"
+              disabled={!connected || busy}
+              onClick={() => void testConnection()}
+            >
+              Test Connection
+            </button>
+            <button
+              type="button"
+              disabled={!connected && !saved.remembered}
+              onClick={() => {
+                operation.current++;
+                session.disconnect();
+                setKey('');
+                setShown(false);
+                setRemember(false);
+                setConnected(false);
+                setReport(null);
+                setResults([]);
+                setSelected(null);
+                setQuery('');
+                setError('');
+                setBusy(false);
+                setStatus('Disconnected. Demo/import library retained.');
+                onConnectionChanged();
                 setWarning(
                   writeCredential('', false, session.provider.id)
                     ? ''
-                    : 'Saved-key removal failed; browser storage is unavailable.',
+                    : 'Session disconnected, but saved-key deletion failed. Remove this site’s storage before sharing the device.',
                 );
-            }}
-          />
-          Remember on this device
-        </label>
+              }}
+            >
+              Disconnect
+            </button>
+          </div>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(event) => {
+                setRemember(event.target.checked);
+                if (!event.target.checked)
+                  setWarning(
+                    writeCredential('', false, session.provider.id)
+                      ? ''
+                      : 'Saved-key removal failed; browser storage is unavailable.',
+                  );
+              }}
+            />
+            Remember on this device
+          </label>
+          <p className="small">
+            Keys stay in memory by default. Remember saves the key when you
+            choose Use key; browser storage is not an OS credential vault. Test
+            Connection, debounced search and history requests may consume
+            provider credits. Nothing fetches automatically on reload or
+            refreshes on focus.
+          </p>
+        </form>
+      )}
+      {yahoo && (
         <p className="small">
-          Keys stay in memory by default. Remember saves the key when you choose
-          Use key; browser storage is not an OS credential vault. Test
-          Connection, debounced search and history requests may consume provider
-          credits. Nothing fetches automatically on reload or refreshes on
-          focus.
+          Enter an NSE trading symbol, such as RELIANCE, TCS, or INFY; .NS is
+          added automatically. Company-name lookup is not supported. Yahoo
+          requests use the local app connection included in npm run dev and npm
+          run preview. Static hosting alone does not include this connection.
+          Nothing is fetched until you choose Load history.
         </p>
-      </form>
+      )}
       {warning && (
         <p className="notice" role="status">
           {warning}
         </p>
       )}
-      <p className="small">
-        {connected ? 'Key available' : 'Disconnected'} ·{' '}
-        {report
-          ? report.usage === null
-            ? `Search test checked at ${report.checkedAt}. Usage, limits and account plan unavailable.`
-            : `Provider-reported usage: ${report.usage}/${report.limit} for the minute when checked at ${report.checkedAt}. This is not a current remaining-credit counter.`
-          : 'Account plan and listing access unverified.'}
-      </p>
+      {!yahoo && (
+        <p className="small">
+          {connected ? 'Key available' : 'Disconnected'} ·{' '}
+          {report
+            ? report.usage === null
+              ? `Search test checked at ${report.checkedAt}. Usage, limits and account plan unavailable.`
+              : `Provider-reported usage: ${report.usage}/${report.limit} for the minute when checked at ${report.checkedAt}. This is not a current remaining-credit counter.`
+            : 'Account plan and listing access unverified.'}
+        </p>
+      )}
       <section aria-label="Local watchlist">
         <h3>Watchlist</h3>
         <p className="small">
@@ -450,10 +478,12 @@ export function ProviderPanel({
       </section>
       <div className="provider-search">
         <label>
-          Search symbol or company
+          {yahoo ? 'NSE trading symbol' : 'Search symbol or company'}
           <input
             ref={searchInput}
-            aria-label="Search symbol or company"
+            aria-label={
+              yahoo ? 'NSE trading symbol' : 'Search symbol or company'
+            }
             placeholder="Type at least 2 characters"
             maxLength={80}
             disabled={!connected}
@@ -471,9 +501,9 @@ export function ProviderPanel({
           />
         </label>
         <p className="small">
-          Search waits for a pause in typing. Press / outside an input to focus
-          search. Choose an exchange match; search results do not prove
-          subscription access.
+          {yahoo
+            ? 'Press / outside an input to focus search. A symbol candidate is not proof of available Yahoo history; Load history checks it.'
+            : 'Search waits for a pause in typing. Press / outside an input to focus search. Choose an exchange match; search results do not prove subscription access.'}
         </p>
       </div>
       {searchStatus && <p role="status">{searchStatus}</p>}
@@ -581,14 +611,20 @@ export function ProviderPanel({
           <select
             aria-label="Provider price adjustment"
             value={adjustment}
-            disabled={alpha}
+            disabled={alpha || yahoo}
             onChange={(event) => {
               if (busy) cancel();
               setAdjustment(event.target.value as 'raw' | 'adjusted');
             }}
           >
-            <option value="raw">Raw · adjust=none</option>
-            <option value="adjusted">Adjusted OHLC · adjust=all</option>
+            <option value="raw">
+              {yahoo
+                ? 'Yahoo OHLC · adjustment unverified'
+                : 'Raw · adjust=none'}
+            </option>
+            {!yahoo && (
+              <option value="adjusted">Adjusted OHLC · adjust=all</option>
+            )}
           </select>
         </label>
       </div>
@@ -636,24 +672,31 @@ export function ProviderPanel({
         Session cache only: at most five datasets, 25,000 bars and 20 MiB. Load
         may reuse a matching dataset fetched in the same exchange date; Refresh
         bypasses reuse. No automatic retries, provider indicator endpoints or
-        shared credentials. Use your own account within its data/display rights.{' '}
+        shared credentials.{' '}
+        {yahoo
+          ? 'Use Yahoo data only within your permitted personal-use rights.'
+          : 'Use your own account within its data/display rights.'}{' '}
         <a
           href={
-            alpha
-              ? 'https://www.alphavantage.co/premium/'
-              : 'https://twelvedata.com/pricing'
+            yahoo
+              ? 'https://finance.yahoo.com/'
+              : alpha
+                ? 'https://www.alphavantage.co/premium/'
+                : 'https://twelvedata.com/pricing'
           }
           target="_blank"
           rel="noreferrer"
         >
-          Provider access and pricing
+          {yahoo ? 'Yahoo Finance' : 'Provider access and pricing'}
         </a>{' '}
         ·{' '}
         <a
           href={
-            alpha
-              ? 'https://www.alphavantage.co/terms_of_service/'
-              : 'https://twelvedata.com/terms'
+            yahoo
+              ? 'https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html'
+              : alpha
+                ? 'https://www.alphavantage.co/terms_of_service/'
+                : 'https://twelvedata.com/terms'
           }
           target="_blank"
           rel="noreferrer"

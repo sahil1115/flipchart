@@ -26,6 +26,7 @@ import type {
 import type { ChartStyle, DisplayRange } from '../state/workspace';
 import type { ThemeDefinition } from '../themes/themes';
 import type { IndicatorId } from '../indicators/presentation';
+import type { MomentumId } from '../indicators/presentation';
 import { formatValue } from '../features/dashboard/readout';
 import { useTypography } from '../themes/TypographyContext';
 import { fontOptions } from '../storage/typography-preference';
@@ -44,6 +45,7 @@ export interface PriceChartProps {
   interval?: Dataset['metadata']['interval'];
   activePane?: IndicatorId | null;
   priceOnly?: boolean;
+  momentumOverlay?: MomentumId | null;
   onChartReady?: (chart: IChartApi | null) => void;
   onInspectorReady?: (
     inspect:
@@ -57,6 +59,7 @@ interface ChartHandle {
   area: ISeriesApi<'Area'>;
   volume: ISeriesApi<'Histogram'> | null;
   indicators: (ISeriesApi<'Line'> | ISeriesApi<'Histogram'>)[];
+  indicatorStyles: { momentum: boolean; index: number; histogram: boolean }[];
   guides: IPriceLine[];
   topology: string;
   markers: ISeriesMarkersPluginApi<Time>;
@@ -76,6 +79,7 @@ export function PriceChart({
   interval = 'daily',
   activePane,
   priceOnly = false,
+  momentumOverlay = null,
   onChartReady,
   onInspectorReady,
 }: PriceChartProps) {
@@ -135,6 +139,7 @@ export function PriceChart({
       },
       timeScale: { timeVisible: false, borderVisible: true, rightOffset: 3 },
       rightPriceScale: { minimumWidth: 64 },
+      overlayPriceScales: { scaleMargins: { top: 0.12, bottom: 0.08 } },
       crosshair: { mode: 0 },
       handleScroll: { vertTouchDrag: false },
     });
@@ -197,6 +202,7 @@ export function PriceChart({
       area,
       volume,
       indicators: [],
+      indicatorStyles: [],
       guides: [],
       topology: '',
       markers: createSeriesMarkers(candleSeries),
@@ -218,11 +224,14 @@ export function PriceChart({
     const savedRange = api.chart.timeScale().getVisibleLogicalRange();
     const active = indicators.filter(
       (item) =>
-        visible[item.id] &&
-        (!priceOnly || ['sma', 'ema', 'bands'].includes(item.id)) &&
+        (visible[item.id] || item.id === momentumOverlay) &&
+        (!priceOnly ||
+          ['sma', 'ema', 'bands'].includes(item.id) ||
+          item.id === momentumOverlay) &&
         (activePane === undefined ||
           ['sma', 'ema', 'bands', 'volumeAverage'].includes(item.id) ||
-          item.id === activePane) &&
+          item.id === activePane ||
+          item.id === momentumOverlay) &&
         (item.id !== 'volumeAverage' || api.volume) &&
         item.series.some((series) =>
           series.values.some((value) => value !== null),
@@ -231,6 +240,7 @@ export function PriceChart({
     const topology = JSON.stringify(
       active.map((item) => [
         item.id,
+        item.id === momentumOverlay,
         item.units,
         item.guides,
         item.series.map((entry) => !!entry.histogram),
@@ -241,18 +251,36 @@ export function PriceChart({
       for (const series of [...api.indicators].reverse())
         api.chart.removeSeries(series);
       api.indicators = [];
+      api.indicatorStyles = [];
       api.guides = [];
       api.topology = topology;
     }
     let seriesIndex = 0;
     let nextPane = api.volume ? 2 : 1;
     for (const item of active) {
-      const pane = ['sma', 'ema', 'bands'].includes(item.id)
-        ? 0
-        : item.id === 'volumeAverage'
-          ? 1
-          : nextPane++;
+      const momentum = item.id === momentumOverlay;
+      const pane =
+        momentum || ['sma', 'ema', 'bands'].includes(item.id)
+          ? 0
+          : item.id === 'volumeAverage'
+            ? 1
+            : nextPane++;
       item.series.forEach((entry, index) => {
+        const bounded =
+          momentum && ['rsi', 'stochastic', 'williams'].includes(item.id);
+        const options = {
+          ...(momentum ? { priceScaleId: 'momentum-overlay' } : {}),
+          ...(bounded
+            ? {
+                autoscaleInfoProvider: () => ({
+                  priceRange: {
+                    minValue: item.id === 'williams' ? -100 : 0,
+                    maxValue: item.id === 'williams' ? 0 : 100,
+                  },
+                }),
+              }
+            : {}),
+        };
         const existing = reuse ? api.indicators[seriesIndex] : undefined;
         seriesIndex++;
         const series =
@@ -260,14 +288,19 @@ export function PriceChart({
           (entry.histogram
             ? api.chart.addSeries(
                 HistogramSeries,
-                { lastValueVisible: false, priceLineVisible: false },
+                {
+                  ...options,
+                  lastValueVisible: false,
+                  priceLineVisible: false,
+                },
                 pane,
               )
             : api.chart.addSeries(
                 LineSeries,
                 {
+                  ...options,
                   title: '',
-                  lineWidth: 2,
+                  lineWidth: momentum ? 1 : 2,
                   lineStyle:
                     item.id === 'ema' || item.id === 'volumeAverage'
                       ? LineStyle.Dashed
@@ -293,7 +326,10 @@ export function PriceChart({
           candles.map((bar, i) =>
             entry.values[i] === null
               ? { time: bar.time }
-              : { time: bar.time, value: entry.values[i]! },
+              : {
+                  time: bar.time,
+                  value: entry.values[i]!,
+                },
           ),
         );
         if (!reuse && index === 0)
@@ -305,11 +341,18 @@ export function PriceChart({
                 lineWidth: 1,
                 lineStyle: 2,
                 axisLabelVisible: false,
-                title: 'Reference',
+                title: momentum ? `${item.name} reference` : 'Reference',
               }),
             ),
           );
-        if (!reuse) api.indicators.push(series);
+        if (!reuse) {
+          api.indicators.push(series);
+          api.indicatorStyles.push({
+            momentum,
+            index,
+            histogram: !!entry.histogram,
+          });
+        }
       });
     }
     // Fixed heights set during insertion redistribute already-mounted panes.
@@ -325,7 +368,7 @@ export function PriceChart({
     if (savedRange) api.chart.timeScale().setVisibleLogicalRange(savedRange);
     // The owning chart effect removes all series/listeners on unmount.
     // Parameter changes reuse series; only a pane topology change remounts them.
-  }, [candles, indicators, visible, activePane, priceOnly]);
+  }, [candles, indicators, visible, activePane, priceOnly, momentumOverlay]);
 
   useEffect(() => {
     const api = handle.current;
@@ -400,11 +443,22 @@ export function PriceChart({
       topColor: palette.areaTop,
       bottomColor: palette.areaBottom,
     });
-    api.indicators.forEach((series, index) =>
+    api.indicators.forEach((series, index) => {
+      const style = api.indicatorStyles[index];
+      const color = style?.momentum
+        ? style.histogram
+          ? palette.crosshair
+          : [palette.negative, palette.crosshair, palette.positive][
+              style.index % 3
+            ]!
+        : [palette.accent, palette.crosshair, palette.negative][index % 3]!;
       series.applyOptions({
-        color: [palette.accent, palette.crosshair, palette.negative][index % 3],
-      }),
-    );
+        color:
+          style?.momentum && style.histogram && /^#[0-9a-f]{6}$/i.test(color)
+            ? `${color}55`
+            : color,
+      });
+    });
     api.volume?.setData(
       candles.map((candle) =>
         candle.volume === null
@@ -421,7 +475,7 @@ export function PriceChart({
     );
     if (savedTypographyRange)
       api.chart.timeScale().setVisibleLogicalRange(savedTypographyRange);
-  }, [theme, candles, indicators, visible, typography]);
+  }, [theme, candles, indicators, visible, typography, momentumOverlay]);
 
   useEffect(() => {
     cursorCallback.current?.(inspected?.time ?? null);
@@ -474,6 +528,10 @@ export function PriceChart({
   }, [range, resetRevision, candles]);
 
   const current = inspected ?? candles.at(-1);
+  const momentumItem = indicators?.find((item) => item.id === momentumOverlay);
+  const momentumIndex = momentumItem
+    ? candles.findIndex((bar) => bar.time === current?.time)
+    : -1;
   const step = (direction: number) => {
     const index = inspected
       ? candles.findIndex((bar) => bar.time === inspected.time)
@@ -498,6 +556,7 @@ export function PriceChart({
     ? (indicators?.filter(
         (item) =>
           visible?.[item.id] &&
+          item.id !== momentumOverlay &&
           (activePane === undefined || item.id === activePane) &&
           !['sma', 'ema', 'bands', 'volumeAverage'].includes(item.id) &&
           item.series.some((series) =>
@@ -579,6 +638,27 @@ export function PriceChart({
               : formatValue(current.volume, 'volume')}
           </strong>
         </span>
+        {momentumOverlay && (
+          <span
+            className="momentum-overlay-legend"
+            data-testid="momentum-overlay-legend"
+          >
+            {momentumItem?.name ?? momentumOverlay.toUpperCase()}{' '}
+            {momentumItem?.series.map((entry) => {
+              const value = entry.values[momentumIndex];
+              return (
+                <span key={entry.name} title={entry.name}>
+                  <strong>
+                    {value == null
+                      ? 'Unavailable'
+                      : formatValue(value, momentumItem.units)}
+                  </strong>{' '}
+                </span>
+              );
+            })}
+            · independent scale
+          </span>
+        )}
         {!priceOnly && inspectionActions}
       </div>
       {priceOnly && inspectionActions}

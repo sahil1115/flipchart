@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { defaults, validateParameters } from '../indicators/core';
 import type { Parameters } from '../indicators/core';
-import { defaultVisibility } from '../indicators/presentation';
+import { defaultVisibility, momentumIds } from '../indicators/presentation';
+import type { MomentumId } from '../indicators/presentation';
 import type { Visibility, IndicatorId } from '../indicators/presentation';
 import { object } from '../data/validate';
 
@@ -13,6 +14,7 @@ export interface DashboardPreference {
   collapsed: Visibility;
   expanded: 'all' | null;
   activePane: IndicatorId;
+  momentumOverlay: MomentumId | null;
 }
 const ids = Object.keys(defaultVisibility) as IndicatorId[];
 export function defaultDashboard(): DashboardPreference {
@@ -24,6 +26,7 @@ export function defaultDashboard(): DashboardPreference {
     collapsed: Object.fromEntries(ids.map((id) => [id, false])) as Visibility,
     expanded: null,
     activePane: 'rsi',
+    momentumOverlay: null,
   };
 }
 /** v1 contained visibility only; migrate it and supply validated defaults. */
@@ -44,6 +47,14 @@ export function validateDashboard(value: unknown): DashboardPreference {
   };
   base.visible = flags(raw.visible);
   base.chartVisible = flags(raw.version === 3 ? raw.chartVisible : raw.visible);
+  if (raw.momentumOverlay !== undefined) {
+    if (
+      raw.momentumOverlay !== null &&
+      !(momentumIds as readonly unknown[]).includes(raw.momentumOverlay)
+    )
+      throw new Error('Invalid momentum overlay');
+    base.momentumOverlay = raw.momentumOverlay as MomentumId | null;
+  }
   if (raw.version === 2 || raw.version === 3) {
     const parameters = object(raw.parameters, 'parameters');
     base.parameters = Object.fromEntries(

@@ -38,9 +38,15 @@ it('migrates visibility-only preferences; projects only validated layout and par
   expect(writeDashboard(value)).toBe(true);
   expect(readDashboard().parameters.rsiPeriod).toBe(7);
   expect(localStorage.getItem('flipchart:dashboard')).not.toContain('never');
+  const oldVersion3 = { ...base, momentumOverlay: undefined };
+  expect(validateDashboard(oldVersion3).momentumOverlay).toBeNull();
+  expect(writeDashboard({ ...base, momentumOverlay: 'macd' })).toBe(true);
+  expect(readDashboard().momentumOverlay).toBe('macd');
   for (const patch of [
     { version: 99 },
     { expanded: 'unknown' },
+    { momentumOverlay: 'atr' },
+    { momentumOverlay: 'unknown' },
     { parameters: { ...base.parameters, rsiPeriod: 0 } },
     { visible: { ...base.visible, rsi: 'true' } },
     { chartVisible: { ...base.chartVisible, sma: 'true' } },

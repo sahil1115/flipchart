@@ -656,6 +656,7 @@ input[type='checkbox'] {
   padding: 24px 0 28px;
   border-top: 1px solid var(--border);
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 24px;
@@ -668,6 +669,15 @@ input[type='checkbox'] {
 }
 .app-footer p {
   margin-top: 4px;
+}
+.app-footer .footer-disclaimer {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: calc(12px * var(--text-scale, 1));
+  text-align: left;
 }
 .source-note {
   display: flex;
@@ -2174,6 +2184,15 @@ html[data-theme='frosted-mono'] .readout-group .indicator-card {
 }
 .reference-toolbar .overlay-chips button::before {
   display: none;
+}
+.momentum-control select {
+  min-height: 34px;
+  padding: 4px 6px;
+  font-size: calc(12px * var(--text-scale, 1));
+  border-radius: 10px;
+}
+.momentum-overlay-legend {
+  color: var(--negative);
 }
 .reference-toolbar .reset-button {
   margin-left: auto;
