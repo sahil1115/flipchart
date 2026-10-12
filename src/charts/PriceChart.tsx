@@ -374,10 +374,11 @@ export function PriceChart({
     const api = handle.current;
     if (!api) return;
     const palette = theme.chart;
-    const savedTypographyRange =
-      previousTypography.current !== typography
-        ? api.chart.timeScale().getVisibleLogicalRange()
-        : null;
+    const typographyChanged = previousTypography.current !== typography;
+    const savedTypographyRange = typographyChanged
+      ? api.chart.timeScale().getVisibleLogicalRange()
+      : null;
+    const minimumWidth = Math.round((64 * typography.size) / 100);
     previousTypography.current = typography;
     api.guides.forEach((guide) =>
       guide.applyOptions({ color: palette.border }),
@@ -398,7 +399,12 @@ export function PriceChart({
       },
       rightPriceScale: {
         borderColor: palette.border,
-        minimumWidth: Math.round((64 * typography.size) / 100),
+        minimumWidth: typographyChanged
+          ? minimumWidth
+          : Math.max(
+              minimumWidth,
+              api.chart.priceScale('right').options().minimumWidth,
+            ),
       },
       timeScale: { borderColor: palette.border },
       crosshair: {

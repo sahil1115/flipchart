@@ -54,6 +54,7 @@ function DetailPlot({
   onInspect: (inspection: Inspection) => void;
 }) {
   const typography = useTypography();
+  const previousTypography = useRef(typography);
   const container = useRef<HTMLDivElement>(null);
   const api = useRef<IChartApi | null>(null);
   const plots = useRef<{ series: PlotSeries; values: (number | null)[] }[]>([]);
@@ -123,6 +124,9 @@ function DetailPlot({
     if (!chart) return;
     const palette = theme.chart;
     const savedRange = chart.timeScale().getVisibleLogicalRange();
+    const typographyChanged = previousTypography.current !== typography;
+    previousTypography.current = typography;
+    const minimumWidth = Math.round((64 * typography.size) / 100);
     programmatic.current = true;
     chart.applyOptions({
       layout: {
@@ -143,7 +147,12 @@ function DetailPlot({
         horzLine: { color: palette.crosshair, style: LineStyle.Dashed },
       },
       rightPriceScale: {
-        minimumWidth: Math.round((64 * typography.size) / 100),
+        minimumWidth: typographyChanged
+          ? minimumWidth
+          : Math.max(
+              minimumWidth,
+              chart.priceScale('right').options().minimumWidth,
+            ),
       },
     });
     plots.current.forEach(({ series }) => chart.removeSeries(series));

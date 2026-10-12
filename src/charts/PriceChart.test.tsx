@@ -219,6 +219,32 @@ describe('chart ownership', () => {
         expect(chart.range).toHaveBeenLastCalledWith(window);
       }
     });
+    for (const chart of mocks.instances) {
+      chart.axis.options.mockReturnValue({ minimumWidth: 70 });
+      chart.getRange.mockReturnValue(window);
+    }
+    view.rerender(
+      <SplitChart
+        candles={candles}
+        theme={glassLight}
+        style="candles"
+        range="6M"
+        resetRevision={0}
+        indicators={items.map((item) => ({ ...item }))}
+        visible={defaultVisibility}
+        activePane="rsi"
+        controls={<div>Categories</div>}
+        onCursor={onCursor}
+      />,
+    );
+    expect(mocks.instances).toHaveLength(3);
+    for (const chart of mocks.instances) {
+      expect(chart.applyOptions).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          rightPriceScale: expect.objectContaining({ minimumWidth: 70 }),
+        }),
+      );
+    }
     const time = candles.at(-2)!.time;
     act(() =>
       mocks.instances[2]!.subscribeClick.mock.calls[0]![0]({
