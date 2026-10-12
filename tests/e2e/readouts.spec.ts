@@ -16,6 +16,27 @@ for (const width of [375, 1440]) {
     const snapshot = async () => {
       await chart.scrollIntoViewIfNeeded();
       await page.mouse.move(0, 0);
+      // Wait for the shared axes to finish sizing before comparing drawings.
+      await expect
+        .poll(() =>
+          page.locator('.split-charts').evaluate(async (element) => {
+            await new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            );
+            const widths = [
+              'price-chart',
+              'volume-chart',
+              'indicator-chart',
+            ].map(
+              (id) =>
+                element
+                  .querySelector(`[data-testid="${id}"] canvas`)!
+                  .getBoundingClientRect().width,
+            );
+            return widths.every((width) => width > 0 && width === widths[0]);
+          }),
+        )
+        .toBe(true);
       // Compare the drawing itself: a translucent plot's backdrop changes on scroll.
       const drawing = await chart
         .locator('canvas')
