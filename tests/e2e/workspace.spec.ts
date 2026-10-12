@@ -271,40 +271,17 @@ test('keyboard layout and parameters persist across reload; reset restores defau
 
   await page.keyboard.press('Enter');
 
-  const collapse = page.getByRole('button', {
-    name: 'Collapse RSI 7 details',
-
-    exact: true,
-  });
-
-  await collapse.focus();
-
+  const expand = page.getByRole('button', { name: 'Expand', exact: true });
+  await expand.focus();
   await page.keyboard.press('Enter');
-
-  await page
-
-    .getByRole('button', { name: 'Expand MACD 12, 26, 9 panel', exact: true })
-
-    .click();
-
   await page.getByLabel('OBV', { exact: true }).focus();
 
   await page.keyboard.press('Space');
 
   await page.reload();
 
-  await expect(
-    page.getByRole('button', { name: 'Show RSI 7 details', exact: true }),
-  ).toBeVisible();
-
-  await expect(
-    page.getByRole('button', {
-      name: 'Restore MACD 12, 26, 9 panel',
-
-      exact: true,
-    }),
-  ).toHaveAttribute('aria-pressed', 'true');
-
+  await expect(expand).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('.dock-card:not(.expanded)')).toHaveCount(0);
   await expect(
     page.getByRole('article', { name: 'OBV', exact: true }),
   ).toBeVisible();
@@ -414,7 +391,9 @@ test('CSV full/visible and metadata downloads match selected interval, parameter
     ),
   );
 
-  await page.getByLabel('Interval', { exact: true }).selectOption('weekly');
+  await page
+    .getByRole('button', { name: 'Weekly interval', exact: true })
+    .click();
 
   const weekly = await downloadRows();
 

@@ -1,8 +1,10 @@
-import { resolveTheme } from '../themes/themes';
+import { resolveTheme, terminalAccents } from '../themes/themes';
+import type { TerminalPreference } from '../themes/themes';
 export interface ThemePreference {
   version: 1;
   themeId: string;
   reducedEffects: boolean;
+  terminal?: TerminalPreference;
 }
 const key = 'flipchart:appearance';
 export function readThemePreference(): ThemePreference {
@@ -31,6 +33,21 @@ export function readThemePreference(): ThemePreference {
       version: 1,
       themeId: resolveTheme(saved.themeId).id,
       reducedEffects: saved.reducedEffects,
+      ...('terminal' in saved &&
+      typeof saved.terminal === 'object' &&
+      saved.terminal !== null &&
+      'mode' in saved.terminal &&
+      (saved.terminal.mode === 'dark' || saved.terminal.mode === 'white') &&
+      'accent' in saved.terminal &&
+      typeof saved.terminal.accent === 'string' &&
+      Object.hasOwn(terminalAccents, saved.terminal.accent)
+        ? {
+            terminal: {
+              mode: saved.terminal.mode,
+              accent: saved.terminal.accent as TerminalPreference['accent'],
+            },
+          }
+        : {}),
     };
   } catch {
     return fallback;

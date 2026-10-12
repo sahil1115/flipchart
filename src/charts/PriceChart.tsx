@@ -27,8 +27,10 @@ import type { ChartStyle, DisplayRange } from '../state/workspace';
 import type { ThemeDefinition } from '../themes/themes';
 import type { IndicatorId } from '../indicators/presentation';
 import { formatValue } from '../features/dashboard/readout';
+import { useTypography } from '../themes/TypographyContext';
+import { fontOptions } from '../storage/typography-preference';
 
-interface Props {
+export interface PriceChartProps {
   candles: Candle[];
   theme: ThemeDefinition;
   style: ChartStyle;
@@ -41,6 +43,12 @@ interface Props {
   onCursor?: (time: TradingDate | null) => void;
   interval?: Dataset['metadata']['interval'];
   activePane?: IndicatorId | null;
+  priceOnly?: boolean;
+  onChartReady?: (chart: IChartApi | null) => void;
+  onInspectorReady?: (
+    inspect:
+      ((request: { time: TradingDate | null; pin: boolean }) => void) | null,
+  ) => void;
 }
 interface ChartHandle {
   chart: IChartApi;
@@ -67,14 +75,43 @@ export function PriceChart({
   onVisibleWindow,
   interval = 'daily',
   activePane,
-}: Props) {
+  priceOnly = false,
+  onChartReady,
+  onInspectorReady,
+}: PriceChartProps) {
+  const typography = useTypography();
+  const previousTypography = useRef(typography);
   const container = useRef<HTMLDivElement>(null);
   const handle = useRef<ChartHandle | null>(null);
+  const pointerInside = useRef(false);
   const [hover, setHover] = useState<Candle | null>(null);
   const [pinned, setPinned] = useState<Candle | null>(null);
+  const [inspectionRequest, setInspectionRequest] = useState<{
+    time: TradingDate | null;
+    pin: boolean;
+  }>();
   const inspected = hover ?? pinned;
   const cursorCallback = useRef(onCursor);
   const windowCallback = useRef(onVisibleWindow);
+  const readyCallback = useRef(onChartReady);
+  useEffect(() => {
+    readyCallback.current = onChartReady;
+  }, [onChartReady]);
+  const inspectorCallback = useRef(onInspectorReady);
+  useEffect(() => {
+    inspectorCallback.current = onInspectorReady;
+  }, [onInspectorReady]);
+  useEffect(() => {
+    inspectorCallback.current?.((request) => {
+      const bar = candles.find((bar) => bar.time === request.time) ?? null;
+      setInspectionRequest(request);
+      if (request.pin) {
+        setPinned(bar);
+        setHover(null);
+      } else setHover(bar);
+    });
+    return () => inspectorCallback.current?.(null);
+  }, [candles]);
   useEffect(() => {
     windowCallback.current = onVisibleWindow;
   }, [onVisibleWindow]);
@@ -106,18 +143,19 @@ export function PriceChart({
     });
     const line = chart.addSeries(LineSeries, { visible: false, lineWidth: 2 });
     const area = chart.addSeries(AreaSeries, { visible: false, lineWidth: 2 });
-    const volume = candles.some((candle) => candle.volume !== null)
-      ? chart.addSeries(
-          HistogramSeries,
-          {
-            priceFormat: { type: 'volume' },
-            priceScaleId: 'right',
-            lastValueVisible: false,
-            priceLineVisible: false,
-          },
-          1,
-        )
-      : null;
+    const volume =
+      !priceOnly && candles.some((candle) => candle.volume !== null)
+        ? chart.addSeries(
+            HistogramSeries,
+            {
+              priceFormat: { type: 'volume' },
+              priceScaleId: 'right',
+              lastValueVisible: false,
+              priceLineVisible: false,
+            },
+            1,
+          )
+        : null;
     chart.panes()[1]?.setHeight(74);
     candleSeries.setData(candles);
     const closes = candles.map(({ time, close }) => ({ time, value: close }));
@@ -127,6 +165,7 @@ export function PriceChart({
       candles.map((candle) => [candle.time as string, candle]),
     );
     const crosshair = (event: MouseEventParams<Time>) => {
+      if (!pointerInside.current || !event.sourceEvent) return;
       if (!event.time || !event.point) {
         setHover(null);
         return;
@@ -162,14 +201,16 @@ export function PriceChart({
       topology: '',
       markers: createSeriesMarkers(candleSeries),
     };
+    readyCallback.current?.(chart);
     return () => {
+      readyCallback.current?.(null);
       chart.unsubscribeCrosshairMove(crosshair);
       chart.unsubscribeClick(pin);
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(windowChanged);
       chart.remove();
       handle.current = null;
     };
-  }, [candles]);
+  }, [candles, priceOnly]);
 
   useEffect(() => {
     const api = handle.current;
@@ -178,6 +219,7 @@ export function PriceChart({
     const active = indicators.filter(
       (item) =>
         visible[item.id] &&
+        (!priceOnly || ['sma', 'ema', 'bands'].includes(item.id)) &&
         (activePane === undefined ||
           ['sma', 'ema', 'bands', 'volumeAverage'].includes(item.id) ||
           item.id === activePane) &&
@@ -283,27 +325,17 @@ export function PriceChart({
     if (savedRange) api.chart.timeScale().setVisibleLogicalRange(savedRange);
     // The owning chart effect removes all series/listeners on unmount.
     // Parameter changes reuse series; only a pane topology change remounts them.
-  }, [candles, indicators, visible, activePane]);
-
-  useEffect(() => {
-    cursorCallback.current?.(inspected?.time ?? null);
-    const api = handle.current;
-    if (!api) return;
-    if (pinned && !hover) {
-      const series =
-        style === 'candles'
-          ? api.candles
-          : style === 'area'
-            ? api.area
-            : api.line;
-      api.chart.setCrosshairPosition(pinned.close, pinned.time, series);
-    } else if (!inspected) api.chart.clearCrosshairPosition();
-  }, [inspected, pinned, hover, style]);
+  }, [candles, indicators, visible, activePane, priceOnly]);
 
   useEffect(() => {
     const api = handle.current;
     if (!api) return;
     const palette = theme.chart;
+    const savedTypographyRange =
+      previousTypography.current !== typography
+        ? api.chart.timeScale().getVisibleLogicalRange()
+        : null;
+    previousTypography.current = typography;
     api.guides.forEach((guide) =>
       guide.applyOptions({ color: palette.border }),
     );
@@ -311,12 +343,20 @@ export function PriceChart({
       layout: {
         background: { type: ColorType.Solid, color: palette.background },
         textColor: palette.text,
+        fontFamily:
+          typography.font === 'system'
+            ? (theme.css['--theme-font-family'] ?? fontOptions.system.family)
+            : fontOptions[typography.font].family,
+        fontSize: Math.round((11 * typography.size) / 100),
       },
       grid: {
         vertLines: { color: palette.grid, visible: false },
         horzLines: { color: palette.grid },
       },
-      rightPriceScale: { borderColor: palette.border },
+      rightPriceScale: {
+        borderColor: palette.border,
+        minimumWidth: Math.round((64 * typography.size) / 100),
+      },
       timeScale: { borderColor: palette.border },
       crosshair: {
         vertLine: { color: palette.crosshair, style: LineStyle.Dashed },
@@ -379,7 +419,27 @@ export function PriceChart({
             },
       ),
     );
-  }, [theme, candles, indicators, visible]);
+    if (savedTypographyRange)
+      api.chart.timeScale().setVisibleLogicalRange(savedTypographyRange);
+  }, [theme, candles, indicators, visible, typography]);
+
+  useEffect(() => {
+    cursorCallback.current?.(inspected?.time ?? null);
+    const api = handle.current;
+    if (!api) return;
+    if (
+      (pinned && !hover) ||
+      (hover && inspectionRequest?.time === hover.time)
+    ) {
+      const series =
+        style === 'candles'
+          ? api.candles
+          : style === 'area'
+            ? api.area
+            : api.line;
+      api.chart.setCrosshairPosition(inspected!.close, inspected!.time, series);
+    } else if (!inspected) api.chart.clearCrosshairPosition();
+  }, [inspected, pinned, hover, style, inspectionRequest, typography]);
 
   useEffect(() => {
     const api = handle.current;
@@ -434,16 +494,42 @@ export function PriceChart({
       });
     }
   };
-  const lowerPanes =
-    indicators?.filter(
-      (item) =>
-        visible?.[item.id] &&
-        (activePane === undefined || item.id === activePane) &&
-        !['sma', 'ema', 'bands', 'volumeAverage'].includes(item.id) &&
-        item.series.some((series) =>
-          series.values.some((value) => value !== null),
-        ),
-    ).length ?? 0;
+  const lowerPanes = !priceOnly
+    ? (indicators?.filter(
+        (item) =>
+          visible?.[item.id] &&
+          (activePane === undefined || item.id === activePane) &&
+          !['sma', 'ema', 'bands', 'volumeAverage'].includes(item.id) &&
+          item.series.some((series) =>
+            series.values.some((value) => value !== null),
+          ),
+      ).length ?? 0)
+    : 0;
+  const inspectionActions = (
+    <div className="inspection-actions">
+      <button aria-label="Inspect previous bar" onClick={() => step(-1)}>
+        ‹
+      </button>
+      <button
+        aria-label="Inspect next bar"
+        onClick={() => step(1)}
+        disabled={current?.time === candles.at(-1)?.time}
+      >
+        ›
+      </button>
+      {
+        <button
+          disabled={!inspected}
+          onClick={() => {
+            setHover(null);
+            setPinned(null);
+          }}
+        >
+          Back to latest
+        </button>
+      }
+    </div>
+  );
   return (
     <>
       <div
@@ -493,29 +579,9 @@ export function PriceChart({
               : formatValue(current.volume, 'volume')}
           </strong>
         </span>
-        <div className="inspection-actions">
-          <button aria-label="Inspect previous bar" onClick={() => step(-1)}>
-            ‹
-          </button>
-          <button
-            aria-label="Inspect next bar"
-            onClick={() => step(1)}
-            disabled={current?.time === candles.at(-1)?.time}
-          >
-            ›
-          </button>
-          {inspected && (
-            <button
-              onClick={() => {
-                setHover(null);
-                setPinned(null);
-              }}
-            >
-              Back to latest
-            </button>
-          )}
-        </div>
+        {!priceOnly && inspectionActions}
       </div>
+      {priceOnly && inspectionActions}
       <div
         ref={container}
         className="price-chart"
@@ -523,13 +589,19 @@ export function PriceChart({
         style={
           indicators
             ? {
-                height: `calc(var(--price-pane-height, 352px) + ${(candles.some((bar) => bar.volume !== null) ? 74 : 0) + lowerPanes * 130 + 28}px)`,
+                height: `calc(var(--price-pane-height, 352px) + ${(!priceOnly && candles.some((bar) => bar.volume !== null) ? 74 : 0) + lowerPanes * 130 + 28}px)`,
               }
             : undefined
         }
         role="img"
         tabIndex={0}
-        onPointerLeave={() => setHover(null)}
+        onPointerEnter={() => {
+          pointerInside.current = true;
+        }}
+        onPointerLeave={() => {
+          pointerInside.current = false;
+          setHover(null);
+        }}
         onKeyDown={(event) => {
           if (['ArrowLeft', 'ArrowRight', 'Escape'].includes(event.key))
             event.preventDefault();

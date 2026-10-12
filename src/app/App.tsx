@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PwaControls } from '../pwa/PwaControls';
 import { GlassPanel } from '../components/GlassPanel';
+import { TypographyPicker } from '../components/TypographyPicker';
+import { TerminalSettings } from '../components/TerminalSettings';
+import { TypographyContext } from '../themes/TypographyContext';
+import {
+  applyTypography,
+  defaultTypography,
+  readTypographyPreference,
+} from '../storage/typography-preference';
 import type { Dataset } from '../data/types';
 import { loadDemo } from '../demo/load';
 import { useWorkspace } from '../state/workspace';
@@ -69,12 +77,17 @@ export function App({
   const [working, setWorking] = useState(false);
   const [preferenceWarning, setPreferenceWarning] = useState('');
   const [preference, setPreference] = useState(readThemePreference);
+  const [typography, setTypography] = useState(readTypographyPreference);
   const generation = useRef(0);
-  const theme = resolveTheme(preference.themeId);
+  const theme = useMemo(
+    () => resolveTheme(preference.themeId, preference.terminal),
+    [preference.themeId, preference.terminal],
+  );
   const preferenceSaved = useWorkspace((value) => value.preferenceSaved);
   useEffect(() => {
     applyTheme(theme, preference.reducedEffects);
   }, [theme, preference.reducedEffects]);
+  useEffect(() => applyTypography(typography), [typography]);
   useEffect(() => () => live.clearCache(), [live]);
   useEffect(() => {
     let cancelled = false;
@@ -205,6 +218,7 @@ export function App({
   function resetSavedPreferences() {
     const saved = resetPreferences();
     useDashboard.getState().reset();
+    setTypography({ ...defaultTypography });
     setPreference({
       version: 1,
       themeId: 'glass-light',
@@ -227,482 +241,542 @@ export function App({
   }
 
   return (
-    <div className={`app-shell${dataset ? ' has-dataset' : ''}`}>
-      <a className="skip-link" href="#workspace">
-        Skip to workspace
-      </a>
-      <header className="app-header">
-        <a
-          href="#"
-          className="brand"
-          aria-label="FlipChart home"
-          onClick={(event) => {
-            event.preventDefault();
-            home();
-          }}
-        >
-          <span className="brand-mark" aria-hidden="true">
-            F<span />
-          </span>
-          <span>
-            FlipChart<span className="brand-caption">A clearer view</span>
-          </span>
+    <TypographyContext value={typography}>
+      <div className={`app-shell${dataset ? ' has-dataset' : ''}`}>
+        <a className="skip-link" href="#workspace">
+          Skip to workspace
         </a>
-        <div className="header-status">
-          <span className="status-dot" aria-hidden="true" />
-          {dataset
-            ? dataset.metadata.mode === 'demo'
-              ? 'Synthetic demo'
-              : dataset.metadata.mode === 'import'
-                ? 'Imported CSV'
-                : `${dataset.metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'} · ${dataset.metadata.interval}`
-            : 'No data loaded'}
-          <span className="badge">
-            {dataset?.metadata.mode === 'live' ? 'PROVIDER' : 'LOCAL'}
-          </span>
-        </div>
-        <div className="header-actions">
-          <div className="theme-control" ref={themeControl}>
-            <button
-              className="settings-button theme-button"
-              aria-expanded={themeOpen}
-              aria-controls="theme-menu"
-              onClick={() => setThemeOpen(!themeOpen)}
-            >
-              <span className="theme-button-icon" aria-hidden="true" />
-              Theme
-            </button>
-            {themeOpen && (
-              <GlassPanel
-                id="theme-menu"
-                className="theme-popover"
-                aria-label="Choose theme"
-              >
-                <div className="theme-popover-heading">
-                  <div>
-                    <h2>Choose a theme</h2>
-                    <p className="small">{theme.name} · choose your finish</p>
-                  </div>
-                  <button
-                    aria-label="Close theme picker"
-                    onClick={() => {
-                      setThemeOpen(false);
-                      themeControl.current
-                        ?.querySelector<HTMLButtonElement>('button')
-                        ?.focus();
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-                <fieldset className="theme-picker">
-                  <legend>Theme</legend>
-                  {Object.values(themes).map((option) => (
-                    <label className="theme-option" key={option.id}>
-                      <input
-                        type="radio"
-                        name="theme"
-                        value={option.id}
-                        checked={preference.themeId === option.id}
-                        onChange={() => {
-                          const next = { ...preference, themeId: option.id };
-                          setPreference(next);
-                          setPreferenceWarning(
-                            writeThemePreference(next)
-                              ? ''
-                              : 'Browser storage is unavailable. Appearance applies for this session.',
-                          );
-                        }}
-                      />
-                      <span
-                        className="theme-swatch"
-                        aria-hidden="true"
-                        style={{
-                          background: option.css['--surface-opaque'],
-                          borderColor: option.css['--border'],
-                        }}
-                      >
-                        <span style={{ background: option.css['--accent'] }} />
-                      </span>
-                      {option.name}
-                    </label>
-                  ))}
-                </fieldset>
-              </GlassPanel>
-            )}
-          </div>
-          <button className="settings-button" onClick={openProvider}>
-            Data connection
-          </button>
-          <button
-            className="settings-button"
-            aria-expanded={settingsOpen}
-            aria-controls="appearance-settings"
-            onClick={() => {
-              setThemeOpen(false);
-              setSettingsOpen(!settingsOpen);
+        <header className="app-header">
+          <a
+            href="#"
+            className="brand"
+            aria-label="FlipChart home"
+            onClick={(event) => {
+              event.preventDefault();
+              home();
             }}
           >
-            Settings <span aria-hidden="true">⚙</span>
-          </button>
-        </div>
-      </header>
-      {settingsOpen && (
-        <GlassPanel
-          id="appearance-settings"
-          className="settings-panel"
-          aria-label="Appearance and storage settings"
-        >
-          <div>
-            <h2>Appearance</h2>
-            <p>{theme.name} · calm surfaces, clear charts</p>
-          </div>
-
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={preference.reducedEffects}
-              onChange={(event) => {
-                const next = {
-                  ...preference,
-                  reducedEffects: event.target.checked,
-                };
-                setPreference(next);
-                setPreferenceWarning(
-                  writeThemePreference(next)
-                    ? ''
-                    : 'Browser storage is unavailable. Appearance applies for this session.',
-                );
-              }}
-            />{' '}
-            Reduce visual effects
-          </label>
-          <div className="storage-controls">
-            <div>
-              <h2>Local storage</h2>
-              <p className="small">
-                Clear Cache removes all saved demo/import datasets and recent
-                listings plus the provider session cache. Saved keys are
-                retained. Reset Preferences resets appearance, chart view, panel
-                layout and parameters. Watchlist and credentials are retained.
-              </p>
-            </div>
-            <button
-              disabled={working}
-              onClick={() =>
-                void libraryAction(
-                  () => {
-                    live.clearCache();
-                    return store.clear();
-                  },
-                  () => {
-                    setState({ status: 'initial' });
-                    setImportOpen(false);
-                    setNotice(
-                      'Dataset caches and recent listings cleared. Appearance, chart view and saved key preferences retained.',
-                    );
-                  },
-                )
-              }
-            >
-              Clear Cache
-            </button>
-            <button onClick={resetSavedPreferences}>Reset Preferences</button>
-          </div>
-        </GlassPanel>
-      )}
-      <main id="workspace" tabIndex={-1}>
-        <PwaControls />
-        <div className="workspace-heading">
-          <div>
-            <p className="eyebrow">YOUR MARKET WORKSPACE</p>
-            <h1>
-              {dataset
-                ? 'Price, in perspective.'
-                : 'Start with a clearer view.'}
-            </h1>
-            <p className="intro">
-              Explore price and volume. Follow the numbers at your own pace.
-            </p>
-          </div>
-          <span className="phase-badge">
-            Prices · volume · independent calculations
-          </span>
-        </div>
-        {library.warning && (
-          <div className="notice" role="status">
-            {library.warning}
-          </div>
-        )}
-        {(preferenceWarning || !preferenceSaved) && (
-          <div className="notice" role="status">
-            {preferenceWarning ||
-              'Chart preferences apply for this session only; browser storage is unavailable.'}
-          </div>
-        )}
-        {notice && (
-          <div className="notice" role="status">
-            {notice}
-            <button aria-label="Dismiss message" onClick={() => setNotice('')}>
-              ×
-            </button>
-          </div>
-        )}
-        {importOpen && (
-          <CsvImportPanel
-            onImport={(item) => void activate(item)}
-            onCancel={() => setImportOpen(false)}
-          />
-        )}
-        {providerOpen && (
-          <label className="provider-selector">
-            Market data provider
-            <select
-              aria-label="Market data provider"
-              value={live.provider.id}
-              onChange={(event) => {
-                live.disconnect();
-                connectionChanged();
-                const selectedProvider =
-                  event.target.value === 'alpha-vantage'
-                    ? new AlphaVantageProvider()
-                    : new TwelveDataProvider();
-                const saved = readCredential(selectedProvider.id);
-                setConnection({
-                  saved,
-                  session: new LiveSession(selectedProvider, saved.credential),
-                });
-              }}
-            >
-              <option value="twelve-data">Twelve Data</option>
-              <option value="alpha-vantage">Alpha Vantage</option>
-            </select>
-            <span className="small">
-              Switching clears the old session, requests and loaded provider
-              data. Remembered keys stay separate; memory-only keys must be
-              entered again. No automatic fallback.
+            <span className="brand-mark" aria-hidden="true">
+              F<span />
             </span>
-          </label>
-        )}
-        <ProviderPanel
-          key={live.provider.id}
-          open={providerOpen}
-          session={live}
-          saved={connection.saved}
-          activeDataset={dataset}
-          warmupBars={warmupBars}
-          nativeWarmupBars={nativeWarmupBars}
-          onIntent={() => {
-            const token = ++generation.current;
-            setWorking(false);
-            return token;
-          }}
-          onConnectionChanged={connectionChanged}
-          onClose={() => setProviderOpen(false)}
-          onDataset={(item, token) => {
-            if (token !== generation.current) return;
-            setState({ status: 'ready', dataset: item });
-            setImportOpen(false);
-            void store.select(null).then(() => setLibrary(store.snapshot()));
-          }}
-          onRefreshFailure={(token) => {
-            if (token !== generation.current) return;
-            setState((previous) =>
-              previous.status === 'ready' &&
-              previous.dataset.metadata.mode === 'live'
-                ? {
-                    status: 'ready',
-                    dataset: {
-                      ...previous.dataset,
-                      metadata: {
-                        ...previous.dataset.metadata,
-                        freshness: 'stale',
-                      },
-                    },
-                  }
-                : previous,
-            );
-          }}
-        />
-        {state.status === 'initial' && !importOpen && !providerOpen && (
-          <Landing
-            onDemo={() => void tryDemo()}
-            onImport={openImport}
-            onProvider={openProvider}
-          />
-        )}
-        {state.status === 'loading' && (
-          <GlassPanel className="state-panel" role="status" aria-busy="true">
-            <h2>Preparing the demo…</h2>
-            <p>Loading bundled synthetic price and volume data.</p>
-            <div className="skeleton" />
-          </GlassPanel>
-        )}
-        {state.status === 'error' && (
-          <GlassPanel className="state-panel" role="alert">
-            <h2>Could not load the demo</h2>
-            <p>An unexpected error interrupted loading. Please try again.</p>
-            <button className="primary" onClick={() => void tryDemo()}>
-              Try again
+            <span>
+              FlipChart<span className="brand-caption">A clearer view</span>
+            </span>
+          </a>
+          {dataset && (
+            <button
+              className="header-listing"
+              onClick={home}
+              aria-label="Change data"
+            >
+              <strong>{dataset.metadata.listing.symbol}</strong>
+              <span>
+                {dataset.metadata.listing.name ??
+                  dataset.metadata.listing.exchange}
+              </span>
+              <span aria-hidden="true">⌄</span>
             </button>
-          </GlassPanel>
-        )}
-        {dataset && (
-          <DatasetWorkspace
-            dataset={dataset}
-            theme={theme}
-            onChangeData={home}
-            onHistoryRequirement={historyRequirement}
-          />
-        )}
-        {library.datasets.length > 0 && (
+          )}
+          <div className="header-status">
+            <span className="status-dot" aria-hidden="true" />
+            {dataset
+              ? dataset.metadata.mode === 'demo'
+                ? 'Synthetic demo'
+                : dataset.metadata.mode === 'import'
+                  ? 'Imported CSV'
+                  : `${dataset.metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'} · ${dataset.metadata.interval}`
+              : 'No data loaded'}
+            <span className="badge">
+              {dataset?.metadata.mode === 'live' ? 'PROVIDER' : 'LOCAL'}
+            </span>
+            {dataset && (
+              <span className="badge">
+                {dataset.candles.at(-1)?.time}
+                {dataset.candles.at(-1)?.incomplete ? ' · Provisional' : ''}
+              </span>
+            )}
+          </div>
+          <div className="header-actions">
+            <div className="theme-control" ref={themeControl}>
+              <button
+                className="settings-button theme-button"
+                aria-expanded={themeOpen}
+                aria-controls="theme-menu"
+                onClick={() => setThemeOpen(!themeOpen)}
+              >
+                <span className="theme-button-icon" aria-hidden="true" />
+                Theme
+              </button>
+              {themeOpen && (
+                <GlassPanel
+                  id="theme-menu"
+                  className="theme-popover"
+                  aria-label="Choose theme"
+                >
+                  <div className="theme-popover-heading">
+                    <div>
+                      <h2>Choose a theme</h2>
+                      <p className="small">{theme.name} · choose your finish</p>
+                    </div>
+                    <button
+                      aria-label="Close theme picker"
+                      onClick={() => {
+                        setThemeOpen(false);
+                        themeControl.current
+                          ?.querySelector<HTMLButtonElement>('button')
+                          ?.focus();
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <fieldset className="theme-picker">
+                    <legend>Theme</legend>
+                    {Object.values(themes).map((option) => (
+                      <label className="theme-option" key={option.id}>
+                        <input
+                          type="radio"
+                          name="theme"
+                          value={option.id}
+                          checked={preference.themeId === option.id}
+                          onChange={() => {
+                            const next = { ...preference, themeId: option.id };
+                            setPreference(next);
+                            setPreferenceWarning(
+                              writeThemePreference(next)
+                                ? ''
+                                : 'Browser storage is unavailable. Appearance applies for this session.',
+                            );
+                          }}
+                        />
+                        <span
+                          className="theme-swatch"
+                          aria-hidden="true"
+                          style={{
+                            background: (option.id === theme.id
+                              ? theme
+                              : option
+                            ).css['--surface-opaque'],
+                            borderColor: (option.id === theme.id
+                              ? theme
+                              : option
+                            ).css['--border'],
+                          }}
+                        >
+                          <span
+                            style={{
+                              background: (option.id === theme.id
+                                ? theme
+                                : option
+                              ).css['--accent'],
+                            }}
+                          />
+                        </span>
+                        {option.name}
+                      </label>
+                    ))}
+                  </fieldset>
+                  {theme.id === 'terminal-amber' && (
+                    <TerminalSettings
+                      value={preference.terminal}
+                      onChange={(terminal) => {
+                        const next = { ...preference, terminal };
+                        setPreference(next);
+                        setPreferenceWarning(
+                          writeThemePreference(next)
+                            ? ''
+                            : 'Browser storage is unavailable. Appearance applies for this session.',
+                        );
+                      }}
+                    />
+                  )}
+                </GlassPanel>
+              )}
+            </div>
+            <button className="settings-button" onClick={openProvider}>
+              Data connection
+            </button>
+            <button
+              className="settings-button"
+              aria-expanded={settingsOpen}
+              aria-controls="appearance-settings"
+              onClick={() => {
+                setThemeOpen(false);
+                setSettingsOpen(!settingsOpen);
+              }}
+            >
+              Settings <span aria-hidden="true">⚙</span>
+            </button>
+            <TypographyPicker value={typography} onChange={setTypography} />
+          </div>
+        </header>
+        {settingsOpen && (
           <GlassPanel
-            className="recent-panel"
-            aria-label="Recent datasets and listings"
+            id="appearance-settings"
+            className="settings-panel"
+            aria-label="Appearance and storage settings"
           >
-            <div className="panel-heading">
+            <div>
+              <h2>Appearance</h2>
+              <p>{theme.name} · calm surfaces, clear charts</p>
+            </div>
+
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={preference.reducedEffects}
+                onChange={(event) => {
+                  const next = {
+                    ...preference,
+                    reducedEffects: event.target.checked,
+                  };
+                  setPreference(next);
+                  setPreferenceWarning(
+                    writeThemePreference(next)
+                      ? ''
+                      : 'Browser storage is unavailable. Appearance applies for this session.',
+                  );
+                }}
+              />{' '}
+              Reduce visual effects
+            </label>
+            <div className="storage-controls">
               <div>
-                <h2>Recent datasets & listings</h2>
+                <h2>Local storage</h2>
                 <p className="small">
-                  {library.persistent
-                    ? 'Saved in this browser'
-                    : 'Session only'}{' '}
-                  · newest selected first · at most 10 datasets, 100,000 bars
-                  and 20 MiB · oldest datasets evicted at limits
+                  Clear Cache removes all saved demo/import datasets and recent
+                  listings plus the provider session cache. Saved keys are
+                  retained. Reset Preferences resets appearance, chart view,
+                  panel layout and parameters. Watchlist and credentials are
+                  retained.
                 </p>
               </div>
-              <button onClick={openImport}>Import another CSV</button>
-            </div>
-            <div className="recent-list">
-              {library.datasets.map((item) => (
-                <div className="recent-item" key={item.metadata.id}>
-                  <div>
-                    <span className="badge">
-                      {item.metadata.mode.toUpperCase()}
-                    </span>
-                    <strong>{item.metadata.listing.symbol}</strong>
-                    <span className="small">
-                      {item.metadata.listing.exchange ?? 'Exchange unavailable'}{' '}
-                      ·{' '}
-                      {item.metadata.listing.currency ?? 'Currency unavailable'}{' '}
-                      · {item.candles.length.toLocaleString('en-US')} bars
-                      {' · '}
-                      {item.metadata.importConventions?.filename ??
-                        'Synthetic demo'}
-                      {' · '}
-                      {item.metadata.latestCandleTime ?? 'Date unavailable'}
-                    </span>
-                  </div>
-                  <div className="recent-actions">
-                    <button
-                      disabled={working}
-                      aria-label={
-                        'Open dataset ' +
-                        item.metadata.listing.symbol +
-                        ' ' +
-                        item.metadata.mode
-                      }
-                      onClick={() =>
-                        void libraryAction(
-                          () => store.select(item.metadata.id),
-                          () => {
-                            setState({ status: 'ready', dataset: item });
-                            setImportOpen(false);
-                          },
-                        )
-                      }
-                    >
-                      {dataset?.metadata.id === item.metadata.id
-                        ? 'Selected'
-                        : 'Open'}
-                    </button>
-                    <button
-                      disabled={working}
-                      aria-label={
-                        'Delete dataset ' +
-                        item.metadata.listing.symbol +
-                        ' ' +
-                        item.metadata.mode
-                      }
-                      onClick={() =>
-                        void libraryAction(
-                          () => store.delete(item.metadata.id),
-                          () => {
-                            if (dataset?.metadata.id === item.metadata.id)
-                              setState({ status: 'initial' });
-                            setNotice(
-                              'Deleted only this dataset from the local library.',
-                            );
-                          },
-                        )
-                      }
-                    >
-                      Delete Dataset
-                    </button>
-                  </div>
-                </div>
-              ))}
+              <button
+                disabled={working}
+                onClick={() =>
+                  void libraryAction(
+                    () => {
+                      live.clearCache();
+                      return store.clear();
+                    },
+                    () => {
+                      setState({ status: 'initial' });
+                      setImportOpen(false);
+                      setNotice(
+                        'Dataset caches and recent listings cleared. Appearance, chart view and saved key preferences retained.',
+                      );
+                    },
+                  )
+                }
+              >
+                Clear Cache
+              </button>
+              <button onClick={resetSavedPreferences}>Reset Preferences</button>
             </div>
           </GlassPanel>
         )}
-      </main>
-      <footer className="app-footer">
-        <div>
-          <strong>FlipChart</strong>
-          <p>For informational purposes only. Not financial advice.</p>
-        </div>
-        <div className="source-note">
-          <span>
-            {dataset
-              ? dataset.metadata.source
-              : 'Start locally with the synthetic demo or a CSV import.'}
-          </span>
-          {dataset && (
-            <>
-              <span>
-                {dataset.metadata.mode === 'live'
-                  ? 'Fetched from provider:'
-                  : 'Loaded locally:'}{' '}
-                {new Date(dataset.metadata.retrievedAt).toISOString()} · Data
-                date: {dataset.metadata.latestCandleTime ?? 'Unavailable'}
-              </span>
-              <span>
-                Currency: {dataset.metadata.listing.currency ?? 'unavailable'} ·
-                Timezone: {dataset.metadata.listing.timezone ?? 'unavailable'} ·
-                Adjustment: {dataset.metadata.adjustment} · Delay:{' '}
-                {dataset.metadata.delay}
-              </span>
-            </>
+        <main id="workspace" tabIndex={-1}>
+          <PwaControls />
+          <div className="workspace-heading">
+            <div>
+              <p className="eyebrow">YOUR MARKET WORKSPACE</p>
+              <h1>
+                {dataset
+                  ? 'Price, in perspective.'
+                  : 'Start with a clearer view.'}
+              </h1>
+              <p className="intro">
+                Explore price and volume. Follow the numbers at your own pace.
+              </p>
+            </div>
+            <span className="phase-badge">
+              Prices · volume · independent calculations
+            </span>
+          </div>
+          {library.warning && (
+            <div className="notice" role="status">
+              {library.warning}
+            </div>
           )}
-          {dataset?.metadata.mode === 'live' && (
+          {(preferenceWarning || !preferenceSaved) && (
+            <div className="notice" role="status">
+              {preferenceWarning ||
+                'Chart preferences apply for this session only; browser storage is unavailable.'}
+            </div>
+          )}
+          {notice && (
+            <div className="notice" role="status">
+              {notice}
+              <button
+                aria-label="Dismiss message"
+                onClick={() => setNotice('')}
+              >
+                ×
+              </button>
+            </div>
+          )}
+          {importOpen && (
+            <CsvImportPanel
+              onImport={(item) => void activate(item)}
+              onCancel={() => setImportOpen(false)}
+            />
+          )}
+          {providerOpen && (
+            <label className="provider-selector">
+              Market data provider
+              <select
+                aria-label="Market data provider"
+                value={live.provider.id}
+                onChange={(event) => {
+                  live.disconnect();
+                  connectionChanged();
+                  const selectedProvider =
+                    event.target.value === 'alpha-vantage'
+                      ? new AlphaVantageProvider()
+                      : new TwelveDataProvider();
+                  const saved = readCredential(selectedProvider.id);
+                  setConnection({
+                    saved,
+                    session: new LiveSession(
+                      selectedProvider,
+                      saved.credential,
+                    ),
+                  });
+                }}
+              >
+                <option value="twelve-data">Twelve Data</option>
+                <option value="alpha-vantage">Alpha Vantage</option>
+              </select>
+              <span className="small">
+                Switching clears the old session, requests and loaded provider
+                data. Remembered keys stay separate; memory-only keys must be
+                entered again. No automatic fallback.
+              </span>
+            </label>
+          )}
+          <ProviderPanel
+            key={live.provider.id}
+            open={providerOpen}
+            session={live}
+            saved={connection.saved}
+            activeDataset={dataset}
+            warmupBars={warmupBars}
+            nativeWarmupBars={nativeWarmupBars}
+            onIntent={() => {
+              const token = ++generation.current;
+              setWorking(false);
+              return token;
+            }}
+            onConnectionChanged={connectionChanged}
+            onClose={() => setProviderOpen(false)}
+            onDataset={(item, token) => {
+              if (token !== generation.current) return;
+              setState({ status: 'ready', dataset: item });
+              setImportOpen(false);
+              void store.select(null).then(() => setLibrary(store.snapshot()));
+            }}
+            onRefreshFailure={(token) => {
+              if (token !== generation.current) return;
+              setState((previous) =>
+                previous.status === 'ready' &&
+                previous.dataset.metadata.mode === 'live'
+                  ? {
+                      status: 'ready',
+                      dataset: {
+                        ...previous.dataset,
+                        metadata: {
+                          ...previous.dataset.metadata,
+                          freshness: 'stale',
+                        },
+                      },
+                    }
+                  : previous,
+              );
+            }}
+          />
+          {state.status === 'initial' && !importOpen && !providerOpen && (
+            <Landing
+              onDemo={() => void tryDemo()}
+              onImport={openImport}
+              onProvider={openProvider}
+            />
+          )}
+          {state.status === 'loading' && (
+            <GlassPanel className="state-panel" role="status" aria-busy="true">
+              <h2>Preparing the demo…</h2>
+              <p>Loading bundled synthetic price and volume data.</p>
+              <div className="skeleton" />
+            </GlassPanel>
+          )}
+          {state.status === 'error' && (
+            <GlassPanel className="state-panel" role="alert">
+              <h2>Could not load the demo</h2>
+              <p>An unexpected error interrupted loading. Please try again.</p>
+              <button className="primary" onClick={() => void tryDemo()}>
+                Try again
+              </button>
+            </GlassPanel>
+          )}
+          {dataset && (
+            <DatasetWorkspace
+              dataset={dataset}
+              theme={theme}
+              onChangeData={home}
+              onHistoryRequirement={historyRequirement}
+            />
+          )}
+          {library.datasets.length > 0 && (
+            <GlassPanel
+              className="recent-panel"
+              aria-label="Recent datasets and listings"
+            >
+              <div className="panel-heading">
+                <div>
+                  <h2>Recent datasets & listings</h2>
+                  <p className="small">
+                    {library.persistent
+                      ? 'Saved in this browser'
+                      : 'Session only'}{' '}
+                    · newest selected first · at most 10 datasets, 100,000 bars
+                    and 20 MiB · oldest datasets evicted at limits
+                  </p>
+                </div>
+                <button onClick={openImport}>Import another CSV</button>
+              </div>
+              <div className="recent-list">
+                {library.datasets.map((item) => (
+                  <div className="recent-item" key={item.metadata.id}>
+                    <div>
+                      <span className="badge">
+                        {item.metadata.mode.toUpperCase()}
+                      </span>
+                      <strong>{item.metadata.listing.symbol}</strong>
+                      <span className="small">
+                        {item.metadata.listing.exchange ??
+                          'Exchange unavailable'}{' '}
+                        ·{' '}
+                        {item.metadata.listing.currency ??
+                          'Currency unavailable'}{' '}
+                        · {item.candles.length.toLocaleString('en-US')} bars
+                        {' · '}
+                        {item.metadata.importConventions?.filename ??
+                          'Synthetic demo'}
+                        {' · '}
+                        {item.metadata.latestCandleTime ?? 'Date unavailable'}
+                      </span>
+                    </div>
+                    <div className="recent-actions">
+                      <button
+                        disabled={working}
+                        aria-label={
+                          'Open dataset ' +
+                          item.metadata.listing.symbol +
+                          ' ' +
+                          item.metadata.mode
+                        }
+                        onClick={() =>
+                          void libraryAction(
+                            () => store.select(item.metadata.id),
+                            () => {
+                              setState({ status: 'ready', dataset: item });
+                              setImportOpen(false);
+                            },
+                          )
+                        }
+                      >
+                        {dataset?.metadata.id === item.metadata.id
+                          ? 'Selected'
+                          : 'Open'}
+                      </button>
+                      <button
+                        disabled={working}
+                        aria-label={
+                          'Delete dataset ' +
+                          item.metadata.listing.symbol +
+                          ' ' +
+                          item.metadata.mode
+                        }
+                        onClick={() =>
+                          void libraryAction(
+                            () => store.delete(item.metadata.id),
+                            () => {
+                              if (dataset?.metadata.id === item.metadata.id)
+                                setState({ status: 'initial' });
+                              setNotice(
+                                'Deleted only this dataset from the local library.',
+                              );
+                            },
+                          )
+                        }
+                      >
+                        Delete Dataset
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassPanel>
+          )}
+        </main>
+        <footer className="app-footer">
+          <div>
+            <strong>FlipChart</strong>
+            <p>For informational purposes only. Not financial advice.</p>
+          </div>
+          <div className="source-note">
+            <span>
+              {dataset
+                ? dataset.metadata.source
+                : 'Start locally with the synthetic demo or a CSV import.'}
+            </span>
+            {dataset && (
+              <>
+                <span>
+                  {dataset.metadata.mode === 'live'
+                    ? 'Fetched from provider:'
+                    : 'Loaded locally:'}{' '}
+                  {new Date(dataset.metadata.retrievedAt).toISOString()} · Data
+                  date: {dataset.metadata.latestCandleTime ?? 'Unavailable'}
+                </span>
+                <span>
+                  Currency: {dataset.metadata.listing.currency ?? 'unavailable'}{' '}
+                  · Timezone:{' '}
+                  {dataset.metadata.listing.timezone ?? 'unavailable'} ·
+                  Adjustment: {dataset.metadata.adjustment} · Delay:{' '}
+                  {dataset.metadata.delay}
+                </span>
+              </>
+            )}
+            {dataset?.metadata.mode === 'live' && (
+              <a
+                href={
+                  dataset.metadata.provider === 'alpha-vantage'
+                    ? 'https://www.alphavantage.co/'
+                    : 'https://twelvedata.com/'
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                {dataset.metadata.source}
+              </a>
+            )}
             <a
-              href={
-                dataset.metadata.provider === 'alpha-vantage'
-                  ? 'https://www.alphavantage.co/'
-                  : 'https://twelvedata.com/'
-              }
+              href="https://www.tradingview.com/"
               target="_blank"
               rel="noreferrer"
             >
-              {dataset.metadata.source}
+              Charts powered by TradingView Lightweight Charts™
             </a>
-          )}
-          <a
-            href="https://www.tradingview.com/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Charts powered by TradingView Lightweight Charts™
-          </a>
-        </div>
-        <div className="footer-attribution">
-          <a href={`${import.meta.env.BASE_URL}license.txt`}>MIT license</a>
-          <a href={`${import.meta.env.BASE_URL}third-party-notices.txt`}>
-            Dependency notices
-          </a>
-        </div>
-        <div id="offline-readiness" />
-      </footer>
-    </div>
+          </div>
+          <div className="footer-attribution">
+            <a href={`${import.meta.env.BASE_URL}license.txt`}>MIT license</a>
+            <a href={`${import.meta.env.BASE_URL}third-party-notices.txt`}>
+              Dependency notices
+            </a>
+          </div>
+          <div id="offline-readiness" />
+        </footer>
+      </div>
+    </TypographyContext>
   );
 }

@@ -20,8 +20,8 @@ function repository() {
     write: async () => {},
   });
 }
-vi.mock('../charts/PriceChart', () => ({
-  PriceChart: () => <div>Chart ready</div>,
+vi.mock('../charts/SplitChart', () => ({
+  SplitChart: () => <div>Chart ready</div>,
 }));
 afterEach(() => {
   cleanup();

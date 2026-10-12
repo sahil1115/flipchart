@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GlassPanel } from '../../components/GlassPanel';
-import { PriceChart } from '../../charts/PriceChart';
+import { SplitChart } from '../../charts/SplitChart';
 import type { Dataset, TradingDate } from '../../data/types';
 import type { Parameters } from '../../indicators/core';
 import type { IndicatorId, Visibility } from '../../indicators/presentation';
@@ -9,7 +9,7 @@ import { definitions } from '../../indicators/presentation';
 import { IndicatorControls } from './IndicatorControls';
 import { IndicatorCard } from './IndicatorCard';
 import { useWorkspace } from '../../state/workspace';
-import type { ChartStyle, DisplayRange } from '../../state/workspace';
+import type { DisplayRange } from '../../state/workspace';
 import type { ThemeDefinition } from '../../themes/themes';
 import { exchangeDate } from '../../providers/twelve-data';
 import { aggregateDaily } from '../../data/aggregate';
@@ -18,6 +18,14 @@ import { exportDataset, downloadText } from '../../import-export/export';
 import type { ExportWindow } from '../../import-export/export';
 import { dailySummary } from '../../indicators/summary';
 import { formatValue, paneLabels } from './readout';
+
+const plotGroups = {
+  'Price & Trend': ['adx'],
+  Momentum: ['rsi', 'macd', 'stochastic', 'cci', 'williams', 'roc'],
+  Volatility: ['atr', 'volatility'],
+  Volume: ['obv'],
+} as const;
+type PlotGroup = keyof typeof plotGroups;
 
 export function DatasetWorkspace({
   dataset: sourceDataset,
@@ -41,7 +49,7 @@ export function DatasetWorkspace({
   const {
     parameters,
     visible,
-    collapsed,
+    chartVisible,
     expanded,
     activePane: selectedPane,
     saved,
@@ -56,12 +64,27 @@ export function DatasetWorkspace({
   const updateWindow = useCallback((window: ExportWindow | null) => {
     exportWindow.current = window;
   }, []);
-  const activePane = visible[selectedPane]
-    ? selectedPane
-    : (Object.keys(paneLabels).find((id) => visible[id as IndicatorId]) as
-        IndicatorId | undefined);
-  const choosePane = (id: IndicatorId) =>
-    update({ activePane: id, visible: { ...visible, [id]: true } });
+  const activePane = selectedPane;
+  const plotGroup =
+    (Object.entries(plotGroups).find(([, ids]) =>
+      (ids as readonly string[]).includes(activePane ?? selectedPane),
+    )?.[0] as PlotGroup) ?? 'Momentum';
+  const [groupSelection, setGroupSelection] = useState<
+    Record<PlotGroup, IndicatorId>
+  >({
+    'Price & Trend': 'adx',
+    Momentum:
+      selectedPane === 'adx' ||
+      ['atr', 'volatility', 'obv'].includes(selectedPane)
+        ? 'rsi'
+        : selectedPane,
+    Volatility: selectedPane === 'volatility' ? 'volatility' : 'atr',
+    Volume: 'obv',
+  });
+  const choosePane = (id: IndicatorId) => {
+    setGroupSelection((previous) => ({ ...previous, [plotGroup]: id }));
+    update({ activePane: id });
+  };
   const [requestedInterval, setInterval] =
     useState<Dataset['metadata']['interval']>('daily');
   const interval =
@@ -187,75 +210,77 @@ export function DatasetWorkspace({
         className="summary workspace-summary"
         aria-label="Dataset summary"
       >
-        <div className="listing-header">
-          <div className="listing">
-            <div>
-              <h2>
-                {listing.symbol}{' '}
-                <span>{listing.name ?? 'Name unavailable'}</span>
-              </h2>
-              <p className="small">
-                {listing.exchange ?? 'Exchange unavailable'} ·{' '}
-                {listing.currency ?? 'Currency unavailable'} · {interval} ·{' '}
-                {listing.timezone ?? 'Timezone unavailable'}
-              </p>
-            </div>
-          </div>
-          <div className="listing-provenance">
-            <span className="badge">
-              {demo ? 'SYNTHETIC' : metadata.mode.toUpperCase()}
-            </span>
-            <span className="small">
-              {latest.time}
-              {latest.incomplete ? ' · Provisional' : ''}
-            </span>
-            <span className="badge">
-              {demo
-                ? 'Historical demo · fixed dataset'
-                : live
-                  ? stale
-                    ? 'Stale loaded data'
-                    : 'Provider history · delay unverified'
-                  : 'Historical import'}
-            </span>
-            <button onClick={onChangeData}>Change data</button>
-          </div>
-        </div>
         <div className="summary-strip">
+          <GlassPanel className="metric-card summary-listing">
+            <span className="metric-label">LISTING</span>
+            <strong>{listing.symbol}</strong>
+            <p className="small" title={listing.name ?? undefined}>
+              {listing.name ?? 'Name unavailable'}
+            </p>
+            <p className="small">
+              {demo ? 'SYNTHETIC' : metadata.mode.toUpperCase()} ·{' '}
+              {listing.exchange ?? 'Exchange unavailable'} ·{' '}
+              {listing.currency ?? 'Currency unavailable'} ·{' '}
+              {listing.timezone ?? 'Timezone unavailable'}
+            </p>
+          </GlassPanel>
           <GlassPanel className="summary-price metric-card">
             <span className="metric-label">
               LATEST CLOSE{latest.incomplete ? ' · PROVISIONAL' : ''}
             </span>
             <strong>{money(latest.close)}</strong>
-            <span
+            <p className="small">
+              {latest.time} · {interval} ·{' '}
+              {demo
+                ? 'Synthetic'
+                : live
+                  ? stale
+                    ? 'Stale loaded data'
+                    : 'Provider history · delay unverified'
+                  : 'Historical import'}
+            </p>
+          </GlassPanel>
+          <GlassPanel className="metric-card summary-change">
+            <span className="metric-label">CHANGE</span>
+            <strong
               className={
                 change !== null && change < 0 ? 'negative' : 'positive'
               }
             >
               {change === null
                 ? 'Unavailable'
-                : `${change >= 0 ? '+' : '−'}${money(Math.abs(change))}${percent === null ? '' : ` (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)`}`}
+                : `${change >= 0 ? '+' : '−'}${money(Math.abs(change))}`}
+            </strong>
+            <span
+              className={
+                percent !== null && percent < 0 ? 'negative' : 'positive'
+              }
+            >
+              {percent === null
+                ? 'Unavailable'
+                : `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`}
             </span>
-            <span className="small">
+            <p className="small">
               {interval === 'daily'
                 ? 'Previous-session change'
                 : 'Previous-bar change'}
-            </span>
+            </p>
           </GlassPanel>
           <GlassPanel className="summary-stat metric-card">
-            <span className="metric-label">LATEST VOLUME</span>
+            <span className="metric-label">VOLUME</span>
             <strong title={latest.volume?.toLocaleString('en-US')}>
               {latest.volume === null
                 ? 'Unavailable'
                 : formatValue(latest.volume, 'volume')}
             </strong>
-            <span className="small">
+            <p className="small">
+              Latest bar ·{' '}
               {demo
                 ? 'Synthetic units'
                 : live
                   ? 'As supplied by provider'
                   : 'As supplied in CSV'}
-            </span>
+            </p>
           </GlassPanel>
           <div
             className="coverage-strip"
@@ -263,31 +288,20 @@ export function DatasetWorkspace({
             aria-label="Daily coverage metrics"
           >
             <GlassPanel className="metric-card">
-              <span className="metric-label">52-WEEK HIGH / LOW</span>
+              <span className="metric-label">52-WEEK RANGE</span>
               <strong>
                 {summary.high52 === null || summary.low52 === null
                   ? 'Unavailable'
-                  : `${money(summary.high52)} / ${money(summary.low52)}`}
+                  : `${money(summary.low52)} – ${money(summary.high52)}`}
               </strong>
-              {summary.high52 === null || summary.low52 === null ? (
-                <p className="small">
-                  Needs 52 weeks and 252 finalized daily bars
-                </p>
-              ) : (
-                <div className="coverage-track" aria-hidden="true">
-                  <span
-                    style={{
-                      left: `${summary.high52 === summary.low52 ? 50 : Math.max(0, Math.min(100, ((sourceDataset.candles.filter((bar) => !bar.incomplete).at(-1)!.close - summary.low52) / (summary.high52 - summary.low52)) * 100))}%`,
-                    }}
-                  />
-                </div>
-              )}
               <p className="small">
-                Finalized daily source · {summary.time ?? 'unavailable'}
+                {summary.high52 === null || summary.low52 === null
+                  ? 'Needs 52 weeks and 252 finalized daily bars'
+                  : `Finalized daily source · ${summary.time ?? 'unavailable'}`}
               </p>
             </GlassPanel>
             <GlassPanel className="metric-card">
-              <span className="metric-label">DISTANCE FROM DAILY SMA-200</span>
+              <span className="metric-label">DISTANCE FROM SMA-200</span>
               <strong>
                 {summary.distance200 === null
                   ? 'Unavailable'
@@ -296,7 +310,7 @@ export function DatasetWorkspace({
               <p className="small">
                 {summary.distance200 === null
                   ? 'Needs 200 finalized daily bars and nonzero average'
-                  : 'Independent of chart range and interval'}
+                  : 'Daily finalized · independent of chart range and interval'}
               </p>
             </GlassPanel>
           </div>
@@ -346,66 +360,49 @@ export function DatasetWorkspace({
       )}
       <div className="focus-workspace">
         <GlassPanel className="chart-panel" aria-label="Price workspace">
-          <div className="chart-heading">
-            <div>
-              <h2>Price & volume</h2>
-              <p>
-                {demo
-                  ? 'Synthetic'
-                  : live
-                    ? metadata.provider === 'alpha-vantage'
-                      ? 'Alpha Vantage'
-                      : 'Twelve Data'
-                    : 'Imported'}{' '}
-                {interval} candles ·{' '}
-                {dataset.candles.length.toLocaleString('en-US')} bars ·{' '}
-                {metadata.adjustment} prices
-              </p>
-            </div>
-            <div className="chart-controls">
-              <label>
-                View
-                <select
-                  aria-label="Chart view"
-                  value={chartStyle}
-                  onChange={(event) =>
-                    setChartStyle(event.target.value as ChartStyle)
-                  }
-                >
-                  <option value="candles">Candlestick</option>
-                  <option value="line">Line</option>
-                  <option value="area">Area</option>
-                </select>
-              </label>
-              <label>
-                Interval
-                <select
-                  aria-label="Interval"
-                  value={interval}
-                  disabled={sourceDataset.metadata.interval !== 'daily'}
-                  onChange={(event) =>
-                    setInterval(
-                      event.target.value as Dataset['metadata']['interval'],
-                    )
-                  }
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">
-                    {sourceDataset.metadata.interval === 'weekly'
-                      ? 'Weekly / provider native'
-                      : 'Weekly / local aggregation'}
-                  </option>
-                  <option value="monthly">
-                    {sourceDataset.metadata.interval === 'monthly'
-                      ? 'Monthly / provider native'
-                      : 'Monthly / local aggregation'}
-                  </option>
-                </select>
-              </label>
-            </div>
-            <div className="chart-toolbar">
+          <div className="reference-toolbar">
+            <div className="toolbar-segment">
+              <span className="metric-label">INTERVAL</span>
               <div
-                className="range-buttons"
+                className="segmented"
+                role="group"
+                aria-label="Chart interval"
+              >
+                {(['daily', 'weekly', 'monthly'] as const).map((value, i) => (
+                  <button
+                    key={value}
+                    aria-label={`${value.charAt(0).toUpperCase()}${value.slice(1)} interval`}
+                    aria-pressed={interval === value}
+                    disabled={sourceDataset.metadata.interval !== 'daily'}
+                    onClick={() => setInterval(value)}
+                  >
+                    {['1D', '1W', '1M'][i]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="toolbar-segment">
+              <span className="metric-label">TYPE</span>
+              <div className="segmented" role="group" aria-label="Chart type">
+                {(['candles', 'line', 'area'] as const).map((value) => (
+                  <button
+                    key={value}
+                    aria-pressed={chartStyle === value}
+                    onClick={() => setChartStyle(value)}
+                  >
+                    {value === 'candles'
+                      ? 'Candles'
+                      : value === 'line'
+                        ? 'Line'
+                        : 'Area'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="toolbar-segment">
+              <span className="metric-label">RANGE</span>
+              <div
+                className="range-buttons segmented"
                 role="group"
                 aria-label="Display range"
               >
@@ -421,49 +418,88 @@ export function DatasetWorkspace({
                   ),
                 )}
               </div>
-              <button className="reset-button" onClick={resetChart}>
-                Reset view <span aria-hidden="true">↺</span>
-              </button>
             </div>
-          </div>
-          <div
-            className="overlay-chips"
-            role="group"
-            aria-label="Price overlays"
-          >
-            <span className="metric-label">OVERLAYS</span>
-            {items
-              .filter((item) => ['sma', 'ema', 'bands'].includes(item.id))
-              .map((item) => (
-                <button
-                  key={item.id}
-                  aria-pressed={visible[item.id]}
-                  onClick={() =>
-                    setVisible({ ...visible, [item.id]: !visible[item.id] })
-                  }
-                >
-                  {item.name}
-                </button>
-              ))}
-          </div>
-          <div
-            className="pane-selector"
-            role="group"
-            aria-label="Indicator pane"
-          >
-            {Object.entries(paneLabels).map(([id, label]) => (
-              <button
-                key={id}
-                aria-label={`Plot ${label}`}
-                aria-pressed={activePane === id}
-                onClick={() => choosePane(id as IndicatorId)}
+            <div className="toolbar-segment">
+              <span className="metric-label">OVERLAYS</span>
+              <div
+                className="overlay-chips segmented"
+                role="group"
+                aria-label="Price overlays"
               >
-                {label}
-              </button>
-            ))}
+                {items
+                  .filter((item) =>
+                    ['sma', 'ema', 'bands', 'volumeAverage'].includes(item.id),
+                  )
+                  .map((item) => (
+                    <button
+                      key={item.id}
+                      aria-label={item.name}
+                      aria-pressed={chartVisible[item.id]}
+                      onClick={() =>
+                        update({
+                          chartVisible: {
+                            ...chartVisible,
+                            [item.id]: !chartVisible[item.id],
+                          },
+                        })
+                      }
+                    >
+                      {item.id === 'bands'
+                        ? 'BB'
+                        : item.id === 'volumeAverage'
+                          ? 'Vol SMA'
+                          : item.name}
+                    </button>
+                  ))}
+              </div>
+            </div>
+            <button className="reset-button" onClick={resetChart}>
+              Reset view <span aria-hidden="true">↺</span>
+            </button>
           </div>
-          <PriceChart
+          <h2 className="visually-hidden">Price &amp; volume</h2>
+          <SplitChart
             key={`${metadata.id}:${metadata.revision}:${interval}:${resetRevision}`}
+            controls={
+              <div className="indicator-navigation">
+                <div
+                  className="category-tabs"
+                  role="group"
+                  aria-label="Indicator categories"
+                >
+                  {(Object.keys(plotGroups) as PlotGroup[]).map((group) => (
+                    <button
+                      key={group}
+                      aria-pressed={plotGroup === group}
+                      onClick={() => {
+                        const id = groupSelection[group];
+                        update({
+                          activePane: id,
+                        });
+                      }}
+                    >
+                      {group}
+                    </button>
+                  ))}
+                </div>
+                <div
+                  className="pane-selector"
+                  role="group"
+                  aria-label="Indicator pane"
+                >
+                  {plotGroups[plotGroup].map((id) => (
+                    <button
+                      key={id}
+                      aria-label={`Plot ${paneLabels[id]}`}
+                      aria-pressed={activePane === id}
+                      onClick={() => choosePane(id)}
+                    >
+                      {paneLabels[id]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            }
             candles={dataset.candles}
             theme={theme}
             style={chartStyle}
@@ -479,11 +515,23 @@ export function DatasetWorkspace({
             indicators={items}
             interval={interval}
             activePane={activePane ?? null}
-            visible={visible}
+            visible={chartVisible}
             onCursor={updateCursor}
             onVisibleWindow={updateWindow}
           />
           <div className="chart-footnote">
+            <span>
+              {demo
+                ? 'Synthetic'
+                : live
+                  ? metadata.provider === 'alpha-vantage'
+                    ? 'Alpha Vantage'
+                    : 'Twelve Data'
+                  : 'Imported'}{' '}
+              {interval} candles ·{' '}
+              {dataset.candles.length.toLocaleString('en-US')} bars ·{' '}
+              {metadata.adjustment} prices
+            </span>
             <span>
               Hover to inspect · click or tap to pin · arrows to step · drag to
               pan
@@ -498,17 +546,33 @@ export function DatasetWorkspace({
         </GlassPanel>
         <aside className="readout-rail" aria-label="Indicator values">
           <div className={`readout-heading${cursor ? ' inspecting' : ''}`}>
-            <h2>
-              Indicator readout{' '}
-              <span className="badge">{cursor ? 'CURSOR' : 'LATEST'}</span>
-            </h2>
+            <div className="readout-title">
+              <h2>
+                Indicator readout{' '}
+                <span className="badge">{cursor ? 'CURSOR' : 'LATEST'}</span>
+              </h2>
+              <button
+                className="readout-expand-all"
+                aria-expanded={expanded !== null}
+                aria-controls="indicator-readouts"
+                onClick={() =>
+                  update({ expanded: expanded === null ? 'all' : null })
+                }
+              >
+                Expand
+              </button>
+            </div>
             <p className="small">
               {cursor
                 ? `Values at the inspected bar · ${cursor}`
                 : 'Latest valid values · each with its own date'}
             </p>
+            <p className="small">
+              Readout selection is independent of chart overlays and tabs.
+            </p>
           </div>
           <section
+            id="indicator-readouts"
             className="indicators-panel"
             aria-label="Indicator workspace"
           >
@@ -554,28 +618,14 @@ export function DatasetWorkspace({
                         <IndicatorCard
                           key={item.id}
                           item={item}
+                          compact
                           candles={dataset.candles}
                           cursor={cursor}
                           currency={listing.currency}
                           interval={interval}
-                          collapsed={collapsed[item.id]}
-                          expanded={expanded === item.id}
+                          expanded={expanded !== null}
                           onToggle={(checked) =>
                             setVisible({ ...visible, [item.id]: checked })
-                          }
-                          onCollapse={() =>
-                            update({
-                              collapsed: {
-                                ...collapsed,
-                                [item.id]: !collapsed[item.id],
-                              },
-                            })
-                          }
-                          onExpand={() =>
-                            update({
-                              expanded: expanded === item.id ? null : item.id,
-                              collapsed: { ...collapsed, [item.id]: false },
-                            })
                           }
                         />
                       ) : (

@@ -32,7 +32,7 @@ it('migrates visibility-only preferences; projects only validated layout and par
   const value = {
     ...base,
     parameters: { ...base.parameters, rsiPeriod: 7 },
-    expanded: 'rsi' as const,
+    expanded: 'all' as const,
     credential: 'never',
   };
   expect(writeDashboard(value)).toBe(true);
@@ -43,8 +43,31 @@ it('migrates visibility-only preferences; projects only validated layout and par
     { expanded: 'unknown' },
     { parameters: { ...base.parameters, rsiPeriod: 0 } },
     { visible: { ...base.visible, rsi: 'true' } },
+    { chartVisible: { ...base.chartVisible, sma: 'true' } },
   ])
     expect(() => validateDashboard({ ...base, ...patch })).toThrow();
+});
+it('migrates linked chart preferences once and persists independent readout/chart choices', () => {
+  const base = defaultDashboard();
+  const legacy = validateDashboard({
+    ...base,
+    version: 2,
+    visible: { ...base.visible, ema: true },
+  });
+  expect(legacy.chartVisible.ema).toBe(true);
+  expect(legacy.chartVisible).not.toBe(legacy.visible);
+  expect(
+    writeDashboard({
+      ...legacy,
+      visible: { ...legacy.visible, sma: false },
+      chartVisible: { ...legacy.chartVisible, ema: false },
+    }),
+  ).toBe(true);
+  const restored = readDashboard();
+  expect(restored.visible.sma).toBe(false);
+  expect(restored.chartVisible.sma).toBe(true);
+  expect(restored.visible.ema).toBe(true);
+  expect(restored.chartVisible.ema).toBe(false);
 });
 it('keeps provider credentials isolated from each other, watchlist and preference reset scopes', () => {
   writeCredential('fixture-only-twelve', true);

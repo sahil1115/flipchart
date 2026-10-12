@@ -48,7 +48,7 @@ for (const width of [375, 768, 1440]) {
     const external: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('request', (request) => {
-      if (!request.url().startsWith('http://127.0.0.1:4179'))
+      if (!request.url().startsWith(test.info().project.use.baseURL!))
         external.push(request.url());
     });
     await page.setViewportSize({ width, height: 1000 });
@@ -89,7 +89,10 @@ for (const width of [375, 768, 1440]) {
     await expect(
       page.getByTestId('price-chart').locator('canvas').first(),
     ).toBeVisible();
-    await page.getByLabel('Chart view').selectOption('line');
+    await page
+      .getByRole('group', { name: 'Chart type', exact: true })
+      .getByRole('button', { name: 'Line', exact: true })
+      .click();
     await page.getByRole('button', { name: 'All', exact: true }).click();
     await page.getByRole('button', { name: /Settings/ }).click();
     await page.getByLabel('Reduce visual effects').check();
@@ -97,7 +100,11 @@ for (const width of [375, 768, 1440]) {
     await expect(
       page.getByRole('region', { name: 'Dataset summary' }),
     ).toContainText('OWN');
-    await expect(page.getByLabel('Chart view')).toHaveValue('line');
+    await expect(
+      page
+        .getByRole('group', { name: 'Chart type', exact: true })
+        .getByRole('button', { name: 'Line', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
     await expect(
       page.getByRole('button', { name: 'All', exact: true }),
     ).toHaveAttribute('aria-pressed', 'true');
@@ -181,14 +188,21 @@ test('cache deletion and preference reset have independent scopes', async ({
   await expect(
     page.getByRole('button', { name: 'Open dataset FLIP demo' }),
   ).toBeEnabled();
-  await page.getByLabel('Chart view').selectOption('area');
+  await page
+    .getByRole('group', { name: 'Chart type', exact: true })
+    .getByRole('button', { name: 'Area', exact: true })
+    .click();
   await page.getByRole('button', { name: '1Y', exact: true }).click();
   await page.getByRole('button', { name: /Settings/ }).click();
   await page.getByLabel('Reduce visual effects').check();
   await page
     .getByRole('button', { name: 'Reset Preferences', exact: true })
     .click();
-  await expect(page.getByLabel('Chart view')).toHaveValue('candles');
+  await expect(
+    page
+      .getByRole('group', { name: 'Chart type', exact: true })
+      .getByRole('button', { name: 'Candles', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(
     page.getByRole('button', { name: '6M', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
@@ -271,8 +285,15 @@ for (const failure of ['denied', 'quota']) {
       await expect(
         page.getByTestId('price-chart').locator('canvas').first(),
       ).toBeVisible();
-      await page.getByLabel('Chart view').selectOption('area');
-      await expect(page.getByLabel('Chart view')).toHaveValue('area');
+      await page
+        .getByRole('group', { name: 'Chart type', exact: true })
+        .getByRole('button', { name: 'Area', exact: true })
+        .click();
+      await expect(
+        page
+          .getByRole('group', { name: 'Chart type', exact: true })
+          .getByRole('button', { name: 'Area', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true');
       await page.reload();
       await expect(page.getByTestId('price-chart')).toHaveCount(0);
       await expect(

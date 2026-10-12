@@ -6,19 +6,21 @@ import type { Visibility, IndicatorId } from '../indicators/presentation';
 import { object } from '../data/validate';
 
 export interface DashboardPreference {
-  version: 2;
+  version: 3;
   parameters: Parameters;
   visible: Visibility;
+  chartVisible: Visibility;
   collapsed: Visibility;
-  expanded: IndicatorId | null;
+  expanded: 'all' | null;
   activePane: IndicatorId;
 }
 const ids = Object.keys(defaultVisibility) as IndicatorId[];
 export function defaultDashboard(): DashboardPreference {
   return {
-    version: 2,
+    version: 3,
     parameters: { ...defaults },
     visible: { ...defaultVisibility },
+    chartVisible: { ...defaultVisibility },
     collapsed: Object.fromEntries(ids.map((id) => [id, false])) as Visibility,
     expanded: null,
     activePane: 'rsi',
@@ -27,7 +29,7 @@ export function defaultDashboard(): DashboardPreference {
 /** v1 contained visibility only; migrate it and supply validated defaults. */
 export function validateDashboard(value: unknown): DashboardPreference {
   const raw = object(value, 'dashboard preferences');
-  if (raw.version !== 1 && raw.version !== 2)
+  if (raw.version !== 1 && raw.version !== 2 && raw.version !== 3)
     throw new Error('Unknown preference version');
   const base = defaultDashboard();
   const flags = (value: unknown): Visibility => {
@@ -41,7 +43,8 @@ export function validateDashboard(value: unknown): DashboardPreference {
     ) as Visibility;
   };
   base.visible = flags(raw.visible);
-  if (raw.version === 2) {
+  base.chartVisible = flags(raw.version === 3 ? raw.chartVisible : raw.visible);
+  if (raw.version === 2 || raw.version === 3) {
     const parameters = object(raw.parameters, 'parameters');
     base.parameters = Object.fromEntries(
       Object.keys(defaults).map((key) => {
@@ -53,9 +56,13 @@ export function validateDashboard(value: unknown): DashboardPreference {
     const error = validateParameters(base.parameters);
     if (error) throw new Error(error);
     base.collapsed = flags(raw.collapsed);
-    if (raw.expanded !== null && !ids.includes(raw.expanded as IndicatorId))
+    if (
+      raw.expanded !== null &&
+      raw.expanded !== 'all' &&
+      !ids.includes(raw.expanded as IndicatorId)
+    )
       throw new Error('Invalid expanded panel');
-    base.expanded = raw.expanded as IndicatorId | null;
+    base.expanded = raw.expanded === null ? null : 'all';
     if (raw.activePane !== undefined) {
       if (
         !ids.includes(raw.activePane as IndicatorId) ||

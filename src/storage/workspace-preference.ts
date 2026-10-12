@@ -1,4 +1,5 @@
 import type { ChartStyle, DisplayRange } from '../state/workspace';
+import { typographyKey } from './typography-preference';
 export interface WorkspacePreference {
   version: 1;
   chartStyle: ChartStyle;
@@ -56,6 +57,7 @@ export function resetPreferences(): boolean {
   try {
     localStorage.removeItem(key);
     localStorage.removeItem('flipchart:appearance');
+    localStorage.removeItem(typographyKey);
     return true;
   } catch {
     return false;

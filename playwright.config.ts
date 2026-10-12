@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
+const port = Number(process.env.FLIPCHART_TEST_PORT ?? 4179);
+const baseURL = `http://127.0.0.1:${port}`;
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
@@ -6,7 +8,7 @@ export default defineConfig({
   timeout: 60_000,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:4179',
+    baseURL,
 
     trace: 'retain-on-failure',
   },
@@ -32,9 +34,8 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    command:
-      'node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4179 --strictPort',
-    url: 'http://127.0.0.1:4179',
+    command: `node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port ${port} --strictPort`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
   },
 });

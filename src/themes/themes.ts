@@ -22,39 +22,41 @@ export const glassLight: ThemeDefinition = {
   colorScheme: 'light',
   css: {
     '--page-background':
-      'linear-gradient(125deg, #e9f0fb 0%, #f2f3fb 48%, #eae6f7 100%)',
-    '--surface': 'rgba(255, 255, 255, 0.72)',
-    '--surface-opaque': '#ffffff',
-    '--surface-elevated': '#f5f7fc',
-    '--plot': '#fcfdff',
-    '--border': '#d5ddeb',
-    '--text': '#202d46',
-    '--muted-text': '#56647b',
-    '--accent': '#3456bb',
-    '--accent-soft': '#edf1fd',
-    '--positive': '#08765b',
-    '--negative': '#b63750',
-    '--focus-ring': '#3456bb',
-    '--shadow': '0 8px 32px rgba(43, 59, 102, 0.06)',
-    '--radius': '20px',
-    '--control-radius': '9px',
+      'radial-gradient(ellipse at 7% 9%, #b3dce9 0%, transparent 48%), radial-gradient(ellipse at 90% 7%, #d8cdf4 0%, transparent 43%), radial-gradient(ellipse at 76% 64%, #bce9dc 0%, transparent 46%), radial-gradient(ellipse at 12% 88%, #f3d3de 0%, transparent 42%), linear-gradient(135deg, #edf4fa, #f4f2fb 56%, #e9f5f8)',
+    '--surface': 'rgba(255, 255, 255, 0.38)',
+    '--surface-opaque': '#f6faff',
+    '--surface-elevated': 'rgba(255, 255, 255, 0.56)',
+    '--plot': 'rgba(255, 255, 255, 0.68)',
+    '--border': 'rgba(115, 141, 177, 0.40)',
+    '--text': '#203047',
+    '--muted-text': '#465871',
+    '--accent': '#2855a6',
+    '--accent-soft': '#dce9fb',
+    '--positive': '#2f7d6d',
+    '--negative': '#a34c4c',
+    '--focus-ring': '#2855a6',
+    '--shadow':
+      '0 14px 34px -16px rgba(45,65,105,0.28), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(255,255,255,0.48)',
+    '--radius': '24px',
+    '--control-radius': '12px',
     '--space': '8px',
     '--on-accent': '#ffffff',
     '--control-shadow': 'none',
     '--inset-shadow': 'none',
     '--pressed-shadow': 'none',
+    '--theme-font-family': "'Inter', 'Segoe UI', system-ui, sans-serif",
   },
   chart: {
-    background: '#fcfdff',
-    text: '#56647b',
-    grid: '#e8edf5',
-    border: '#d5ddeb',
-    crosshair: '#56647b',
-    positive: '#08765b',
-    negative: '#b63750',
-    accent: '#3456bb',
-    areaTop: 'rgba(52,86,187,0.26)',
-    areaBottom: 'rgba(52,86,187,0.02)',
+    background: 'rgba(255, 255, 255, 0.68)',
+    text: '#465871',
+    grid: 'rgba(91,117,157,0.16)',
+    border: 'rgba(115,141,177,0.40)',
+    crosshair: '#587aa5',
+    positive: '#2f7d6d',
+    negative: '#a34c4c',
+    accent: '#2855a6',
+    areaTop: 'rgba(40,85,166,0.20)',
+    areaBottom: 'rgba(40,85,166,0.01)',
   },
 };
 export const softClay: ThemeDefinition = {
@@ -175,14 +177,171 @@ export const frostedMono: ThemeDefinition = {
     areaBottom: 'rgba(37,41,45,0.02)',
   },
 };
+export const oceanBlue: ThemeDefinition = {
+  id: 'ocean-blue',
+  name: 'Ocean Blue',
+  colorScheme: 'light',
+  css: {
+    ...glassLight.css,
+    '--page-background':
+      'radial-gradient(ellipse at 0% 0%, #badbff 0%, transparent 48%), radial-gradient(ellipse at 100% 70%, #c6f0f4 0%, transparent 46%), linear-gradient(140deg, #e9f3ff, #dceafe)',
+    '--surface': 'rgba(239, 247, 255, 0.88)',
+    '--surface-opaque': '#f2f8ff',
+    '--surface-elevated': '#e4effd',
+    '--plot': '#edf6ff',
+    '--border': '#b4cce8',
+    '--text': '#183960',
+    '--muted-text': '#49678d',
+    '--accent': '#175fc4',
+    '--accent-soft': '#d7e7ff',
+    '--positive': '#08796d',
+    '--negative': '#ae3652',
+    '--focus-ring': '#175fc4',
+    '--shadow':
+      '0 2px 4px rgba(21,73,130,0.04), 0 12px 30px rgba(21,73,130,0.10)',
+    '--radius': '22px',
+    '--control-radius': '11px',
+  },
+  chart: {
+    background: '#edf6ff',
+    text: '#49678d',
+    grid: '#d7e6f5',
+    border: '#b4cce8',
+    crosshair: '#41638e',
+    positive: '#08796d',
+    negative: '#ae3652',
+    accent: '#175fc4',
+    areaTop: 'rgba(23,95,196,0.24)',
+    areaBottom: 'rgba(23,95,196,0.02)',
+  },
+};
+export const plumNoir: ThemeDefinition = {
+  id: 'plum-noir',
+  name: 'Plum Noir',
+  colorScheme: 'dark',
+  css: {
+    ...glassLight.css,
+    '--page-background':
+      'radial-gradient(ellipse at 5% 0%, #493047 0%, transparent 48%), radial-gradient(ellipse at 100% 90%, #3b2944 0%, transparent 44%), linear-gradient(145deg, #211a2b, #17121e)',
+    '--surface': 'rgba(43, 34, 54, 0.90)',
+    '--surface-opaque': '#2b2236',
+    '--surface-elevated': '#34283e',
+    '--plot': '#221c2d',
+    '--border': '#594560',
+    '--text': '#f1eaf7',
+    '--muted-text': '#bfb1cb',
+    '--accent': '#f4bc7a',
+    '--accent-soft': '#443040',
+    '--positive': '#90d7b4',
+    '--negative': '#f2a0b6',
+    '--focus-ring': '#f4bc7a',
+    '--on-accent': '#291b14',
+    '--shadow': '0 2px 6px rgba(10,6,15,0.18), 0 18px 40px rgba(10,6,15,0.30)',
+    '--radius': '18px',
+    '--control-radius': '9px',
+    '--control-shadow': 'inset 0 1px 0 rgba(255,227,184,0.05)',
+  },
+  chart: {
+    background: '#221c2d',
+    text: '#bfb1cb',
+    grid: '#3d324c',
+    border: '#594560',
+    crosshair: '#d095b5',
+    positive: '#90d7b4',
+    negative: '#f2a0b6',
+    accent: '#f4bc7a',
+    areaTop: 'rgba(244,188,122,0.22)',
+    areaBottom: 'rgba(244,188,122,0.01)',
+  },
+};
+export const terminalAccents = {
+  yellow: { name: 'Solar Yellow', dark: '#ffe566', white: '#806600' },
+  gold: { name: 'Heritage Gold', dark: '#ffb74d', white: '#946200' },
+  blue: { name: 'Electric Blue', dark: '#69b5ff', white: '#1156b5' },
+  green: { name: 'Emerald Green', dark: '#73e29c', white: '#126b38' },
+  pink: { name: 'Rose Pink', dark: '#ff8ec7', white: '#a52068' },
+  purple: { name: 'Royal Purple', dark: '#c49bff', white: '#6b38b2' },
+  monochrome: { name: 'Pure Contrast', dark: '#ffffff', white: '#000000' },
+} as const;
+export interface TerminalPreference {
+  mode: 'dark' | 'white';
+  accent: keyof typeof terminalAccents;
+}
+export const defaultTerminalPreference: TerminalPreference = {
+  mode: 'dark',
+  accent: 'gold',
+};
+export function terminalTheme(
+  preference: TerminalPreference = defaultTerminalPreference,
+): ThemeDefinition {
+  const dark = preference.mode === 'dark';
+  const background = dark ? '#000000' : '#ffffff';
+  const accent = terminalAccents[preference.accent][preference.mode];
+  const rgb = accent
+    .slice(1)
+    .match(/../g)!
+    .map((pair) => parseInt(pair, 16))
+    .join(',');
+  const muted = dark ? '#b8b8b8' : '#595959';
+  const border = dark ? '#454545' : '#c7c7c7';
+  const positive = dark ? '#64df9b' : '#126b38';
+  const negative = dark ? '#ff91b4' : '#ae214e';
+  return {
+    id: 'terminal-amber',
+    name: 'Terminal',
+    colorScheme: dark ? 'dark' : 'light',
+    css: {
+      ...glassLight.css,
+      '--page-background': background,
+      '--surface': background,
+      '--surface-opaque': background,
+      '--surface-elevated': background,
+      '--plot': background,
+      '--border': border,
+      '--text': accent,
+      '--muted-text': muted,
+      '--accent': accent,
+      '--accent-soft': background,
+      '--positive': positive,
+      '--negative': negative,
+      '--focus-ring': accent,
+      '--on-accent': background,
+      '--shadow': 'none',
+      '--radius': '3px',
+      '--control-radius': '2px',
+      '--theme-font-family': "Consolas, 'Liberation Mono', Menlo, monospace",
+    },
+    chart: {
+      background,
+      text: muted,
+      border,
+      grid: dark ? '#212121' : '#e4e4e4',
+      crosshair: dark ? '#d0d0d0' : '#626262',
+      positive,
+      negative,
+      accent,
+      areaTop: `rgba(${rgb},0.20)`,
+      areaBottom: `rgba(${rgb},0.01)`,
+    },
+  };
+}
+export const terminalAmber = terminalTheme();
 export const themes: Readonly<Record<string, ThemeDefinition>> = {
   [glassLight.id]: glassLight,
   [softClay.id]: softClay,
   [midnightClay.id]: midnightClay,
   [frostedMono.id]: frostedMono,
+  [oceanBlue.id]: oceanBlue,
+  [plumNoir.id]: plumNoir,
+  [terminalAmber.id]: terminalAmber,
 };
-export const resolveTheme = (id: string): ThemeDefinition =>
-  themes[id] ?? glassLight;
+export const resolveTheme = (
+  id: string,
+  terminal?: TerminalPreference,
+): ThemeDefinition =>
+  id === terminalAmber.id
+    ? terminalTheme(terminal)
+    : (themes[id] ?? glassLight);
 export function applyTheme(theme: ThemeDefinition, reducedEffects: boolean) {
   const root = document.documentElement;
   root.dataset.theme = theme.id;

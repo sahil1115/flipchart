@@ -1,6 +1,6 @@
 # FlipChart
 
-**Version: [v0.1.5](https://github.com/sahil1115/flipchart/releases/tag/v0.1.5)**
+**Version: [v0.1.6](https://github.com/sahil1115/flipchart/releases/tag/v0.1.6)**
 
 FlipChart is a stock-chart dashboard that runs in your browser. Explore prices, volume, and 15 technical indicators using demo data, your own CSV files, or a market-data API.
 
@@ -23,13 +23,32 @@ No backend, database server, or API key is needed for demo data or CSV imports.
 
 - Choose **Try Demo** to explore the charts immediately.
 - Choose **Import CSV** to load daily price data from a file.
-- Choose an indicator above the chart; its values appear in the readout beside it.
+- Choose a category below the price and volume charts, then choose an indicator. Select readout checkboxes in the dock to choose which values to display.
+- Chart overlays and tabs work independently from the readout checkboxes. Use **Expand** at the top of the readout to toggle details for all cards.
 - Hover to inspect, click or tap to pin a bar, and use the arrow buttons to step through history.
 - Pan and zoom the chart, change the date range, and adjust calculation parameters below the workspace.
 - Save listings to your watchlist and export chart data as CSV.
-- Use the top **Theme** button to choose Glass Light, Soft Clay, Midnight Clay, or Frosted Mono. Open Settings to reduce visual effects.
+- Use the top **Theme** button to choose Glass Light, Soft Clay, Midnight Clay, Frosted Mono, Ocean Blue, Plum Noir, or Terminal. Open Settings to reduce visual effects.
+- The Terminal theme offers Dark/White backgrounds and Solar Yellow, Heritage Gold, Electric Blue, Emerald Green, Rose Pink, Royal Purple, or Pure Contrast accents. Pure Contrast uses white on black or black on white.
+- Use **Text** at the top right to change the font or make text smaller/larger. Your text settings stay saved in this browser.
 
 Imported datasets and dashboard preferences stay in this browser when storage is available.
+
+## Theme previews
+
+Screenshots use the built-in synthetic demo data.
+
+**Terminal · black background with Solar Yellow**
+
+![FlipChart Terminal theme with a black background and Solar Yellow accent](assets/screenshots/terminal-yellow.png)
+
+**Glass Light**
+
+![FlipChart Glass Light theme](assets/screenshots/glass-light.png)
+
+**Ocean Blue**
+
+![FlipChart Ocean Blue theme](assets/screenshots/ocean-blue.png)
 
 ## Connect market data
 

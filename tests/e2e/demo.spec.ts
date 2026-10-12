@@ -6,7 +6,7 @@ for (const width of [375, 768, 1440]) {
     const externalRequests: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('request', (request) => {
-      if (!request.url().startsWith('http://127.0.0.1:4179'))
+      if (!request.url().startsWith(test.info().project.use.baseURL!))
         externalRequests.push(request.url());
     });
     await page.setViewportSize({ width, height: 1000 });
@@ -42,9 +42,18 @@ for (const width of [375, 768, 1440]) {
     await expect(
       page.getByRole('region', { name: 'Dataset summary' }),
     ).toContainText('Previous-session change');
-    await page.getByLabel('Chart view').selectOption('line');
-    await page.getByLabel('Chart view').selectOption('area');
-    await page.getByLabel('Chart view').selectOption('candles');
+    await page
+      .getByRole('group', { name: 'Chart type', exact: true })
+      .getByRole('button', { name: 'Line', exact: true })
+      .click();
+    await page
+      .getByRole('group', { name: 'Chart type', exact: true })
+      .getByRole('button', { name: 'Area', exact: true })
+      .click();
+    await page
+      .getByRole('group', { name: 'Chart type', exact: true })
+      .getByRole('button', { name: 'Candles', exact: true })
+      .click();
     await page.getByRole('button', { name: '1M', exact: true }).click();
     await expect(
       page.getByRole('button', { name: '1M', exact: true }),
@@ -75,24 +84,24 @@ for (const width of [375, 768, 1440]) {
     );
     expect(
       await page
-        .locator('.chart-panel')
+        .locator('.price-plot')
         .evaluate((element) => getComputedStyle(element).backdropFilter),
     ).toBe('none');
     expect(
       await page
-        .locator('.chart-panel')
+        .locator('.price-plot')
         .evaluate((element) => getComputedStyle(element).backgroundColor),
-    ).toBe('rgb(255, 255, 255)');
+    ).toBe('rgb(246, 250, 255)');
     expect(
       await page
         .locator('.reset-button')
         .evaluate((element) => getComputedStyle(element).color),
-    ).toBe('rgb(32, 45, 70)');
+    ).toBe('rgb(32, 48, 71)');
     expect(
       await page
         .locator('.price-chart')
         .evaluate((element) => getComputedStyle(element).backgroundColor),
-    ).toBe('rgb(252, 253, 255)');
+    ).toBe('rgb(246, 250, 255)');
     expect(await chart.locator('canvas').count()).toBe(canvasCount);
     expect(
       await page.evaluate(
@@ -175,12 +184,12 @@ test('opaque base styling remains usable when the backdrop support rule is absen
   ).toBeVisible();
   expect(
     await page
-      .locator('.chart-panel')
+      .locator('.price-plot')
       .evaluate((element) => getComputedStyle(element).backgroundColor),
-  ).toBe('rgb(255, 255, 255)');
+  ).toBe('rgb(246, 250, 255)');
   expect(
     await page
-      .locator('.chart-panel')
+      .locator('.price-plot')
       .evaluate((element) => getComputedStyle(element).backdropFilter),
   ).toBe('none');
   await page.getByRole('button', { name: /Settings/ }).click();

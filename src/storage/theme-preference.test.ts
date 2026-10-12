@@ -6,6 +6,31 @@ afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
 });
+it('restores terminal mode and accent while ignoring invalid terminal settings', () => {
+  const preference = {
+    version: 1 as const,
+    themeId: 'terminal-amber',
+    reducedEffects: true,
+    terminal: { mode: 'white' as const, accent: 'purple' as const },
+  };
+  expect(writeThemePreference(preference)).toBe(true);
+  expect(readThemePreference()).toEqual(preference);
+  for (const terminal of [
+    { mode: 'unknown', accent: 'gold' },
+    { mode: 'dark', accent: 'unknown' },
+    null,
+  ]) {
+    localStorage.setItem(
+      'flipchart:appearance',
+      JSON.stringify({ ...preference, terminal }),
+    );
+    expect(readThemePreference()).toEqual({
+      version: 1,
+      themeId: 'terminal-amber',
+      reducedEffects: true,
+    });
+  }
+});
 it('accepts a versioned preference and falls back for future unknown IDs', () => {
   writeThemePreference({
     version: 1,

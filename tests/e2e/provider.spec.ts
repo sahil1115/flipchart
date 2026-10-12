@@ -167,7 +167,10 @@ for (const width of [375, 768, 1440]) {
       .click();
     await loaded(page);
     await page.getByRole('button', { name: '1M', exact: true }).click();
-    await page.getByLabel('Chart view').selectOption('line');
+    await page
+      .getByRole('group', { name: 'Chart type', exact: true })
+      .getByRole('button', { name: 'Line', exact: true })
+      .click();
     await page.getByRole('checkbox', { name: 'EMA', exact: true }).check();
     await page.getByText('Calculation parameters', { exact: true }).click();
     await page.getByLabel('RSI period', { exact: true }).fill('7');
@@ -179,12 +182,18 @@ for (const width of [375, 768, 1440]) {
     ).toContainText('Latest valid');
     await page.getByRole('button', { name: /Settings/ }).click();
     await page.getByLabel('Reduce visual effects').check();
-    await page.getByLabel('Interval', { exact: true }).selectOption('weekly');
+    await page
+      .getByRole('button', { name: 'Weekly interval', exact: true })
+      .click();
     await expect(
       page.getByRole('region', { name: 'Dataset summary' }),
     ).toContainText('weekly');
-    await page.getByLabel('Interval', { exact: true }).selectOption('monthly');
-    await page.getByLabel('Interval', { exact: true }).selectOption('daily');
+    await page
+      .getByRole('button', { name: 'Monthly interval', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Daily interval', exact: true })
+      .click();
     await page.getByLabel('History window').selectOption('3Y');
     await page.getByLabel('Provider price adjustment').selectOption('adjusted');
     expect(fixture.requests).toHaveLength(3);

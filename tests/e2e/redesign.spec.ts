@@ -11,6 +11,30 @@ for (const width of [375, 1440]) {
     await page.getByRole('button', { name: /Try Demo/ }).click();
     const chart = page.getByTestId('price-chart');
     await expect(chart.locator('canvas').first()).toBeVisible();
+    await expect(page.locator('.summary-strip .metric-card')).toHaveCount(6);
+    await expect(
+      page.getByTestId('volume-chart').locator('canvas').first(),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('indicator-chart').locator('canvas').first(),
+    ).toBeVisible();
+    const paneOrder = await page
+      .locator('.split-charts')
+      .evaluate((element) => {
+        const volume = element
+          .querySelector('.volume-plot')!
+          .getBoundingClientRect();
+        const controls = element
+          .querySelector('.indicator-navigation')!
+          .getBoundingClientRect();
+        const indicator = element
+          .querySelector('.indicator-plot')!
+          .getBoundingClientRect();
+        return (
+          volume.bottom <= controls.top && controls.bottom <= indicator.top
+        );
+      });
+    expect(paneOrder).toBe(true);
     await page.mouse.move(0, 0);
     const close = page.locator('.summary-price > strong');
     const latest = await close.textContent();
@@ -22,6 +46,16 @@ for (const width of [375, 1440]) {
       (element) => element.getBoundingClientRect().height,
     );
     for (const name of ['MACD', 'ADX', 'Stoch', 'OBV', 'RSI']) {
+      const category =
+        name === 'ADX'
+          ? 'Price & Trend'
+          : name === 'OBV'
+            ? 'Volume'
+            : 'Momentum';
+      await page
+        .getByRole('group', { name: 'Indicator categories' })
+        .getByRole('button', { name: category, exact: true })
+        .click();
       await page
         .getByRole('button', { name: `Plot ${name}`, exact: true })
         .click();
@@ -35,6 +69,37 @@ for (const width of [375, 1440]) {
         .toBe(height);
       await expect(close).toHaveText(latest!);
     }
+    await chart.scrollIntoViewIfNeeded();
+    const priceBounds = await chart.boundingBox();
+    await page.mouse.move(
+      priceBounds!.x + priceBounds!.width / 2,
+      priceBounds!.y + 110,
+    );
+    const hoverDate = (await page
+      .locator('.chart-legend')
+      .textContent())!.match(/\d{4}-\d{2}-\d{2}/)![0];
+    const volumeChart = page.getByTestId('volume-chart');
+    await volumeChart.scrollIntoViewIfNeeded();
+    const volumeBounds = await volumeChart.boundingBox();
+    await page.mouse.move(
+      volumeBounds!.x + volumeBounds!.width / 2,
+      volumeBounds!.y + 40,
+    );
+    await expect(page.locator('.chart-legend')).toContainText(hoverDate);
+    const lowerChart = page.getByTestId('indicator-chart');
+    await lowerChart.scrollIntoViewIfNeeded();
+    const lowerBounds = await lowerChart.boundingBox();
+    await page.mouse.click(
+      lowerBounds!.x + lowerBounds!.width / 2,
+      lowerBounds!.y + 70,
+    );
+    await page.mouse.move(0, 0);
+    await expect(page.locator('.chart-legend')).toContainText(
+      'Cursor · pinned',
+    );
+    await page
+      .getByRole('button', { name: 'Back to latest', exact: true })
+      .click();
     await page
       .getByRole('button', { name: 'Inspect previous bar', exact: true })
       .click();
@@ -71,10 +136,20 @@ for (const width of [375, 1440]) {
     await page
       .getByRole('button', { name: 'Inspect previous bar', exact: true })
       .click();
-    await page.getByLabel('Interval', { exact: true }).selectOption('weekly');
+    await page
+      .getByRole('button', { name: 'Weekly interval', exact: true })
+      .click();
     await expect(legend).toContainText('Latest bar');
     await expect(coverage).toHaveText(dailyMetrics!);
-    await page.getByLabel('Interval', { exact: true }).selectOption('daily');
+    await page
+      .getByRole('button', { name: 'Daily interval', exact: true })
+      .click();
+    await page.mouse.move(0, 0);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({
+      path: `verification/screenshots/deepseek-layout-${width}.png`,
+      fullPage: true,
+    });
     await page.getByRole('button', { name: 'Theme', exact: true }).click();
     await page
       .getByRole('radio', { name: 'Frosted Mono', exact: true })

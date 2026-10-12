@@ -46,7 +46,7 @@ for (const width of [375, 768, 1440])
       external: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('request', (request) => {
-      if (!request.url().startsWith('http://127.0.0.1:4179'))
+      if (!request.url().startsWith(test.info().project.use.baseURL!))
         external.push(request.url());
     });
     await page.setViewportSize({ width, height: 1000 });
@@ -129,12 +129,11 @@ for (const width of [375, 768, 1440])
     await expect
       .poll(() =>
         chart.evaluate((element) => {
-          const rows = Array.from(element.querySelectorAll('tr')).filter(
-            (row) => row.querySelector('canvas'),
-          );
-          const heights = rows
-            .slice(0, -1)
-            .map((row) => row.getBoundingClientRect().height);
+          const heights = Array.from(
+            element
+              .closest('.split-charts')!
+              .querySelectorAll('.price-chart, .detail-plot'),
+          ).map((plot) => plot.getBoundingClientRect().height);
           return (
             heights.length === 3 &&
             heights[0]! >= 200 &&

@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { StrictMode } from 'react';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { glassLight } from '../themes/themes';
 import { createDemoDataset } from '../demo/dataset';
 import { calculate, defaults } from '../indicators/core';
 import { definitions, defaultVisibility } from '../indicators/presentation';
+import { TypographyContext } from '../themes/TypographyContext';
+import { defaultTypography } from '../storage/typography-preference';
 
 const mocks = vi.hoisted(() => {
   const instances: {
@@ -71,6 +73,7 @@ vi.mock('lightweight-charts', () => ({
   createSeriesMarkers: () => ({ setMarkers: vi.fn() }),
 }));
 import { PriceChart } from './PriceChart';
+import { SplitChart } from './SplitChart';
 afterEach(() => {
   cleanup();
   mocks.instances.length = 0;
@@ -78,6 +81,86 @@ afterEach(() => {
 });
 const candles = createDemoDataset('2026-10-09T00:00:00Z').candles;
 describe('chart ownership', () => {
+  it('changes chart-label typography without replacing the chart or clearing a pinned inspection', () => {
+    const view = render(
+      <TypographyContext value={defaultTypography}>
+        <PriceChart
+          candles={candles}
+          theme={glassLight}
+          style="candles"
+          range="6M"
+          resetRevision={0}
+        />
+      </TypographyContext>,
+    );
+    const chart = mocks.instances[0]!;
+    fireEvent.click(view.getByRole('button', { name: 'Inspect previous bar' }));
+    const pinned = view.container.querySelector('.chart-legend')!.textContent;
+    const rangeCalls = chart.range.mock.calls.length;
+    view.rerender(
+      <TypographyContext value={{ version: 1, font: 'verdana', size: 140 }}>
+        <PriceChart
+          candles={candles}
+          theme={glassLight}
+          style="candles"
+          range="6M"
+          resetRevision={0}
+        />
+      </TypographyContext>,
+    );
+    expect(mocks.createChart).toHaveBeenCalledTimes(1);
+    expect(chart.range).toHaveBeenCalledTimes(rangeCalls + 1);
+    expect(chart.range).toHaveBeenLastCalledWith({ from: 648, to: 782 });
+    expect(chart.applyOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        layout: expect.objectContaining({
+          fontFamily: 'Verdana, Geneva, sans-serif',
+          fontSize: 15,
+        }),
+      }),
+    );
+    expect(view.container.querySelector('.chart-legend')!.textContent).toBe(
+      pinned,
+    );
+  });
+  it('synchronizes split plot ranges and inspection, and cleans up every chart', () => {
+    const onCursor = vi.fn();
+    const items = definitions(calculate(candles, defaults), defaults);
+    const view = render(
+      <SplitChart
+        candles={candles}
+        theme={glassLight}
+        style="candles"
+        range="6M"
+        resetRevision={0}
+        indicators={items}
+        visible={defaultVisibility}
+        activePane="rsi"
+        controls={<div>Categories</div>}
+        onCursor={onCursor}
+      />,
+    );
+    expect(mocks.instances).toHaveLength(3);
+    const window = { from: 500, to: 600 };
+    act(() => mocks.instances[1]!.subscribeWindow.mock.calls[0]![0](window));
+    expect(mocks.instances[0]!.range).toHaveBeenLastCalledWith(window);
+    expect(mocks.instances[2]!.range).toHaveBeenLastCalledWith(window);
+    const time = candles.at(-2)!.time;
+    act(() =>
+      mocks.instances[2]!.subscribeClick.mock.calls[0]![0]({
+        time,
+        point: { x: 100, y: 50 },
+      }),
+    );
+    expect(onCursor).toHaveBeenLastCalledWith(time);
+    view.unmount();
+    for (const chart of mocks.instances) {
+      expect(chart.remove).toHaveBeenCalledTimes(1);
+      expect(chart.unsubscribeCrosshairMove).toHaveBeenCalledTimes(1);
+      expect(chart.unsubscribeClick).toHaveBeenCalledTimes(1);
+      expect(chart.unsubscribeWindow).toHaveBeenCalledTimes(1);
+    }
+  });
   it('pairs every listener and instance with cleanup through StrictMode and repeated remounts', () => {
     for (let i = 0; i < 3; i++) {
       const view = render(
@@ -173,10 +256,19 @@ describe('chart ownership', () => {
     expect(chart.addSeries.mock.calls.some((call) => call[2] === 4)).toBe(true);
     expect(chart.subscribeCrosshairMove).toHaveBeenCalledTimes(1);
     const latest = candles.at(-1)!;
+    fireEvent.pointerEnter(view.getByTestId('price-chart'));
     act(() =>
       chart.subscribeCrosshairMove.mock.calls[0]![0]({
         time: latest.time,
         point: { x: 1, y: 1 },
+      }),
+    );
+    expect(cursor).toHaveBeenLastCalledWith(null);
+    act(() =>
+      chart.subscribeCrosshairMove.mock.calls[0]![0]({
+        time: latest.time,
+        point: { x: 1, y: 1 },
+        sourceEvent: {},
       }),
     );
     expect(cursor).toHaveBeenLastCalledWith(latest.time);

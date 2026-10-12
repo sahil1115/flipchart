@@ -14,6 +14,7 @@ export function IndicatorCard({
   onCollapse,
   onExpand,
   onToggle,
+  compact = false,
 }: {
   item: IndicatorDefinition;
   candles: Candle[];
@@ -25,48 +26,93 @@ export function IndicatorCard({
   onCollapse?: () => void;
   onExpand?: () => void;
   onToggle?: (checked: boolean) => void;
+  compact?: boolean;
 }) {
   const cursorIndex = cursor
     ? candles.findIndex((bar) => bar.time === cursor)
     : -1;
   const finalized = candles.filter((bar) => !bar.incomplete).length;
+  const dates = [
+    ...new Set(
+      item.series
+        .map((series) =>
+          cursor
+            ? cursorIndex >= 0 && series.values[cursorIndex] !== null
+              ? cursor
+              : null
+            : (latestValue(candles, series.values)?.time ?? null),
+        )
+        .filter(Boolean),
+    ),
+  ];
+  const shortNames: Partial<Record<IndicatorDefinition['id'], string>> = {
+    adx: 'ADX',
+    stochastic: 'Stoch',
+    williams: 'Williams %R',
+    volatility: 'Historical volatility',
+  };
+  const shortName = shortNames[item.id] ?? item.name.replace(/\s+\d.*$/, '');
+  const periods = ['sma', 'ema'].includes(item.id)
+    ? item.series.map((series) => series.name.match(/\d+/)?.[0]).join('/')
+    : item.name.match(/\d.*$/)?.[0];
   return (
     <article
-      className={`indicator-card${expanded ? ' expanded' : ''}`}
+      className={`indicator-card${expanded ? ' expanded' : ''}${compact ? ' dock-card' : ''}${cursor ? ' cursor-card' : ''}`}
       aria-label={item.name}
     >
       <h3>
         {onToggle ? (
-          <label>
+          <label aria-label={item.name}>
             <input
               type="checkbox"
+              aria-label={item.name}
               checked
               onChange={(event) => onToggle(event.target.checked)}
             />
-            {item.name}
+            {compact ? (
+              <>
+                {shortName} <span className="readout-periods">{periods}</span>
+              </>
+            ) : (
+              item.name
+            )}
           </label>
         ) : (
           item.name
         )}
       </h3>
-      <div className="panel-actions">
-        <button
-          aria-label={`${collapsed ? 'Show' : 'Collapse'} ${item.name} details`}
-          aria-expanded={!collapsed}
-          onClick={onCollapse}
-        >
-          {collapsed ? '⌄' : '⌃'}
-        </button>
-        <button
-          aria-label={`${expanded ? 'Restore' : 'Expand'} ${item.name} panel`}
-          aria-pressed={expanded}
-          onClick={onExpand}
-        >
-          {expanded ? '−' : '+'}
-        </button>
-      </div>
-      <div hidden={collapsed}>
-        <p className="small">
+      {!compact && (
+        <div className="panel-actions">
+          <button
+            aria-label={`${collapsed ? 'Show' : 'Collapse'} ${item.name} details`}
+            aria-expanded={!collapsed}
+            onClick={onCollapse}
+          >
+            {collapsed ? '⌄' : '⌃'}
+          </button>
+          <button
+            aria-label={`${expanded ? 'Restore' : 'Expand'} ${item.name} panel`}
+            aria-pressed={expanded}
+            onClick={onExpand}
+          >
+            {expanded ? '−' : '+'}
+          </button>
+        </div>
+      )}
+      {compact && (
+        <p className="compact-readout-meta">
+          <span>
+            {dates.length === 1
+              ? `${cursor ? 'Cursor' : 'Latest valid'} · ${dates[0]}${!cursor && dates[0] !== candles.at(-1)?.time ? ' · earlier than latest candle' : ''}`
+              : dates.length
+                ? 'Mixed valid dates · expand details'
+                : 'Unavailable · expand details'}
+          </span>
+          <span>{valueUnit(item.units, currency)}</span>
+        </p>
+      )}
+      <div className="readout-body" hidden={collapsed && !compact}>
+        <p className="small readout-description">
           {item.units === 'price'
             ? (currency ?? 'Price units')
             : item.units === 'volume'
@@ -113,8 +159,9 @@ export function IndicatorCard({
                         ? value.value.toLocaleString('en-US', {
                             maximumFractionDigits:
                               item.units === 'volume' ? 0 : 8,
-                          })
-                        : reason
+                          }) +
+                          (compact ? ` · ${series.name} · ${value.time}` : '')
+                        : (compact ? `${series.name}: ` : '') + reason
                     }
                   >
                     {value

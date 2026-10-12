@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import assert from 'node:assert/strict';
-import { chromium } from '@playwright/test';
+import { chromium, expect } from '@playwright/test';
 
 execFileSync(
   process.execPath,
@@ -170,11 +170,12 @@ try {
   await page.waitForFunction(
     async () => !(await navigator.serviceWorker.getRegistration()).waiting,
   );
-  assert.match(await page.locator('body').innerText(), /UPDATE/);
-  assert.match(
-    await page.getByRole('region', { name: 'Price workspace' }).innerText(),
-    /Imported daily candles/,
-  );
+  await expect(
+    page.getByRole('region', { name: 'Dataset summary' }),
+  ).toContainText('UPDATE');
+  await expect(
+    page.getByRole('region', { name: 'Price workspace' }),
+  ).toContainText('Imported daily candles');
   const keys = await page.evaluate(async () => {
     const urls = [];
     for (const name of await caches.keys())

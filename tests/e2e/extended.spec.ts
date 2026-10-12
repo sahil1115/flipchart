@@ -7,7 +7,7 @@ for (const width of [375, 768, 1440])
       external: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('request', (request) => {
-      if (!request.url().startsWith('http://127.0.0.1:4179'))
+      if (!request.url().startsWith(test.info().project.use.baseURL!))
         external.push(request.url());
     });
     await page.setViewportSize({ width, height: 1000 });
@@ -44,7 +44,9 @@ for (const width of [375, 768, 1440])
     await page.getByRole('button', { name: /Settings/ }).click();
     await page.getByLabel('Reduce visual effects').check();
     await expect(roc.locator('strong')).toHaveText(value!);
-    await page.getByLabel('Interval', { exact: true }).selectOption('weekly');
+    await page
+      .getByRole('button', { name: 'Weekly interval', exact: true })
+      .click();
     await expect(
       page.getByRole('region', { name: 'Dataset summary' }),
     ).toContainText('weekly');
@@ -59,6 +61,7 @@ for (const width of [375, 768, 1440])
         exact: true,
       }),
     ).toContainText('Latest valid');
+    await page.getByRole('button', { name: 'Expand', exact: true }).click();
     await page
       .getByRole('article', { name: 'Historical volatility 20', exact: true })
       .getByText('Calculation', { exact: true })
@@ -73,7 +76,9 @@ for (const width of [375, 768, 1440])
     await expect(
       page.getByRole('article', { name: 'SMA', exact: true }),
     ).toContainText('Needs 200 finalized bars');
-    await page.getByLabel('Interval', { exact: true }).selectOption('monthly');
+    await page
+      .getByRole('button', { name: 'Monthly interval', exact: true })
+      .click();
     await expect(roc).toContainText('monthly periods');
     await expect(page.getByText(/Local monthly: first open/)).toBeVisible();
     await expect(
@@ -83,9 +88,11 @@ for (const width of [375, 768, 1440])
       }),
     ).toContainText('√12');
     await expect(metrics).toHaveText(baseline!);
-    await page.getByLabel('Interval', { exact: true }).selectOption('daily');
-    await expect(roc.locator('strong')).toHaveText(value!);
+    await page
+      .getByRole('button', { name: 'Daily interval', exact: true })
+      .click();
     await page.mouse.move(0, 0);
+    await expect(roc.locator('strong')).toHaveText(value!);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -137,7 +144,9 @@ test('short daily source cannot fabricate 52-week coverage or monthly indicator 
       .getByRole('article', { name: 'CCI 20', exact: true })
       .locator('strong'),
   ).toHaveText('0');
-  await page.getByLabel('Interval', { exact: true }).selectOption('monthly');
+  await page
+    .getByRole('button', { name: 'Monthly interval', exact: true })
+    .click();
   await expect(
     page.getByRole('article', { name: 'CCI 20', exact: true }),
   ).toContainText('Unavailable');
