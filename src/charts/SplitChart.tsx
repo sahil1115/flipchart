@@ -300,28 +300,31 @@ export function SplitChart({
   const alignAxes = useCallback(() => {
     if (axisFrame.current !== null) return;
     axisFrame.current = requestAnimationFrame(() => {
-      axisFrame.current = null;
-      // Labels can exceed minimumWidth, depending on the data and installed font.
-      // Give every pane the widest axis so an x-coordinate maps to the same date.
-      const width = Math.max(
-        0,
-        ...Array.from(charts.current.values(), (chart) =>
-          chart.priceScale('right').width(),
-        ),
-      );
-      const window = viewport.current;
-      syncing.current = true;
-      try {
-        charts.current.forEach((chart) => {
-          const axis = chart.priceScale('right');
-          if (axis.options().minimumWidth < width) {
-            axis.applyOptions({ minimumWidth: width });
-            if (window) chart.timeScale().setVisibleLogicalRange(window);
-          }
-        });
-      } finally {
-        syncing.current = false;
-      }
+      // The renderer computes label widths in its pending animation frame.
+      axisFrame.current = requestAnimationFrame(() => {
+        axisFrame.current = null;
+        // Labels can exceed minimumWidth, depending on the data and installed font.
+        // Give every pane the widest axis so an x-coordinate maps to the same date.
+        const width = Math.max(
+          0,
+          ...Array.from(charts.current.values(), (chart) =>
+            chart.priceScale('right').width(),
+          ),
+        );
+        const window = viewport.current;
+        syncing.current = true;
+        try {
+          charts.current.forEach((chart) => {
+            const axis = chart.priceScale('right');
+            if (axis.options().minimumWidth < width) {
+              axis.applyOptions({ minimumWidth: width });
+              if (window) chart.timeScale().setVisibleLogicalRange(window);
+            }
+          });
+        } finally {
+          syncing.current = false;
+        }
+      });
     });
   }, []);
   useEffect(
@@ -343,8 +346,9 @@ export function SplitChart({
       });
       onVisibleWindow?.(window);
       syncing.current = false;
+      alignAxes();
     },
-    [onVisibleWindow],
+    [onVisibleWindow, alignAxes],
   );
   const register = useCallback(
     (key: string, chart: IChartApi | null) => {
