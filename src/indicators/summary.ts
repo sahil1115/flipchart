@@ -11,7 +11,9 @@ export function dailySummary(dataset: Dataset) {
   first.setUTCDate(first.getUTCDate() - 364);
   const boundary = first.toISOString().slice(0, 10);
   const window = bars.filter((bar) => bar.time >= boundary);
-  const covered = bars[0]!.time <= boundary && window.length >= 252;
+  // Coverage is decided by dates, not a bar count: exchanges differ (NSE has
+  // roughly 245-250 sessions a year, so a fixed 252-bar floor never passes).
+  const covered = bars[0]!.time <= boundary;
   const recent = bars.slice(-200);
   const average = recent.reduce((sum, bar) => sum + bar.close / 200, 0);
   const distance =

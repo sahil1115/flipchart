@@ -307,7 +307,7 @@ export function DatasetWorkspace({
               </strong>
               <p className="small">
                 {summary.high52 === null || summary.low52 === null
-                  ? 'Needs 52 weeks and 252 finalized daily bars'
+                  ? 'Needs 52 weeks of finalized daily history'
                   : `Finalized daily source · ${summary.time ?? 'unavailable'}`}
               </p>
             </GlassPanel>
@@ -337,9 +337,11 @@ export function DatasetWorkspace({
             metadata.aggregationDetails?.groups.filter((group) => group.partial)
               .length
           }{' '}
-          partial/unverified groups are excluded from finalized calculations.
-          Week boundaries are Monday–Sunday; month boundaries use the source
-          date calendar. No provider interval request is made.
+          groups have missing weekdays (exchange holidays are unverified);{' '}
+          {dataset.candles.filter((bar) => bar.incomplete).length} provisional
+          or unfilled edge groups are excluded from finalized calculations. Week
+          boundaries are Monday–Sunday; month boundaries use the source date
+          calendar. No provider interval request is made.
         </div>
       )}
       {live && (

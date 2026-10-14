@@ -226,3 +226,19 @@ it('includes every non-secret identity/range/convention in query keys and adds f
   expect(basic.from < '2025-10-09').toBe(true);
   expect(longer.from < basic.from).toBe(true);
 });
+it('bounds the requested calendar span so monthly warm-up cannot exceed the provider bar cap', () => {
+  const now = new Date('2026-10-09T12:00:00Z');
+  for (const window of ['1Y', '3Y', '5Y'] as const) {
+    const wide = historyRequest(
+      listing,
+      window,
+      'raw',
+      request.accessProfile,
+      11_500,
+      now,
+    );
+    const days = (Date.parse(wide.to) - Date.parse(wide.from)) / 86_400_000;
+    expect((days * 5) / 7).toBeLessThanOrEqual(5000);
+    expect(days).toBeGreaterThan(Number(window[0]) * 365);
+  }
+});

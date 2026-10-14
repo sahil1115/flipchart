@@ -42,3 +42,17 @@ it('does not pretend weekly coverage is daily or invent distance when a zero ave
     }).distance200,
   ).toBeNull();
 });
+it('reports the 52-week range for calendars with fewer than 252 sessions a year', () => {
+  const dataset = createDemoDataset('2026-10-09T12:00:00Z');
+  const last = dataset.candles.at(-1)!.time;
+  const boundary = new Date(`${last}T12:00:00Z`);
+  boundary.setUTCDate(boundary.getUTCDate() - 364);
+  const from = boundary.toISOString().slice(0, 10);
+  // Thin the window to ~245 sessions, as on NSE, while keeping the span.
+  const candles = dataset.candles.filter(
+    (bar, index) => bar.time < from || bar.time === from || index % 21 !== 0,
+  );
+  const inWindow = candles.filter((bar) => bar.time >= from).length;
+  expect(inWindow).toBeLessThan(252);
+  expect(dailySummary({ ...dataset, candles }).high52).not.toBeNull();
+});

@@ -17,7 +17,12 @@ function bounds(time: TradingDate, interval: 'weekly' | 'monthly') {
   return { first, last };
 }
 
-/** No exchange calendar inference: missing weekdays conservatively flag partial coverage. */
+/**
+ * No exchange calendar inference. Any missing weekday sets the informational
+ * `partial` flag (it may be an exchange holiday). A bar is only `incomplete`
+ * (excluded from indicators) when a constituent is provisional or the period is
+ * unfilled at the start or end of the source history; interior gaps are not.
+ */
 export function aggregateDaily(
   input: Dataset,
   interval: 'weekly' | 'monthly',
@@ -35,23 +40,31 @@ export function aggregateDaily(
   const details: NonNullable<
     Dataset['metadata']['aggregationDetails']
   >['groups'] = [];
-  const candles = [...groups].map(([time, rows]): Candle => {
+  const candles = [...groups].map(([time, rows], index, all): Candle => {
     const { first, last } = bounds(time, interval);
     const present = new Set(rows.map((row) => row.time));
-    let partial = rows.some((row) => row.incomplete);
+    const firstRow = rows[0]!;
+    const lastRow = rows.at(-1)!;
+    const provisional = rows.some((row) => row.incomplete);
+    let partial = provisional;
+    let leadingGap = false;
+    let trailingGap = false;
     for (
       const cursor = new Date(first);
       cursor <= last;
       cursor.setUTCDate(cursor.getUTCDate() + 1)
     ) {
-      if (
-        ![0, 6].includes(cursor.getUTCDay()) &&
-        !present.has(dateString(cursor))
-      )
+      const day = dateString(cursor);
+      if (![0, 6].includes(cursor.getUTCDay()) && !present.has(day)) {
         partial = true;
+        if (day < firstRow.time) leadingGap = true;
+        if (day > lastRow.time) trailingGap = true;
+      }
     }
-    const firstRow = rows[0]!;
-    const lastRow = rows.at(-1)!;
+    const incomplete =
+      provisional ||
+      (index === 0 && leadingGap) ||
+      (index === all.length - 1 && trailingGap);
     details.push({
       time,
       from: firstRow.time,
@@ -68,7 +81,7 @@ export function aggregateDaily(
       volume: rows.some((row) => row.volume === null)
         ? null
         : rows.reduce((sum, row) => sum + row.volume!, 0),
-      incomplete: partial,
+      incomplete,
     };
   });
   return validateDataset({
@@ -82,7 +95,7 @@ export function aggregateDaily(
         ? { from: candles[0]!.time, to: candles.at(-1)!.time }
         : null,
       latestCandleTime: candles.at(-1)?.time ?? null,
-      aggregation: `Local ${interval}: first open, maximum high, minimum low, last close; volume null if any constituent is unknown. Missing weekdays mark partial coverage.`,
+      aggregation: `Local ${interval}: first open, maximum high, minimum low, last close; volume null if any constituent is unknown. Missing weekdays are noted as unverified (possible holidays); only provisional bars and unfilled periods at the start or end of the history are marked incomplete.`,
       aggregationDetails: {
         sourceInterval: 'daily',
         sourceCoverage: dataset.metadata.coverage,

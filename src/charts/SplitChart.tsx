@@ -350,11 +350,14 @@ export function SplitChart({
       if (syncing.current || !window) return;
       syncing.current = true;
       viewport.current = window;
-      charts.current.forEach((chart, key) => {
-        if (key !== source) chart.timeScale().setVisibleLogicalRange(window);
-      });
-      onVisibleWindow?.(window);
-      syncing.current = false;
+      try {
+        charts.current.forEach((chart, key) => {
+          if (key !== source) chart.timeScale().setVisibleLogicalRange(window);
+        });
+        onVisibleWindow?.(window);
+      } finally {
+        syncing.current = false;
+      }
       alignAxes();
     },
     [onVisibleWindow, alignAxes],

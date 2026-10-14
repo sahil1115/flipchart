@@ -122,6 +122,35 @@ it('uses exchange dates, skips completely empty slots, and keeps the current day
   ).toHaveLength(1);
 });
 
+it('skips partially empty slots, accepts the NSE exchange alias and tolerates a missing volume series', async () => {
+  const payload = yahooHistory(3);
+  const result = payload.chart.result[0]!;
+  const quote = result.indicators.quote[0] as unknown as Record<
+    string,
+    (number | null)[] | undefined
+  >;
+  quote.close![1] = null;
+  result.meta.exchangeName = 'NSE';
+  delete quote.volume;
+  const data = await provider(payload).api.getOHLCV(request, '', signal());
+  expect(data.candles.map((bar) => bar.time)).toEqual([
+    '2025-01-01',
+    '2025-01-03',
+  ]);
+  expect(data.candles.every((bar) => bar.volume === null)).toBe(true);
+});
+
+it('names the failed validation in the malformed-response message', async () => {
+  const payload = yahooHistory(2);
+  payload.chart.result[0]!.indicators.quote[0]!.volume.pop();
+  await expect(
+    provider(payload).api.getOHLCV(request, '', signal()),
+  ).rejects.toMatchObject({
+    category: 'malformed-response',
+    message: expect.stringContaining('Unaligned volume'),
+  });
+});
+
 it.each([
   [403, 'unsupported-endpoint'],
   [404, 'unsupported-listing'],

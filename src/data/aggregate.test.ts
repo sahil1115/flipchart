@@ -115,7 +115,7 @@ it('aggregates a full leap-year month without declaring missing weekends partial
   ]);
   expect(result.metadata.aggregationDetails?.groups[0]?.count).toBe(21);
 });
-it('preserves source date/calendar across a year boundary and marks a historical missing weekday partial', () => {
+it('preserves source date/calendar across a year boundary and notes an interior missing weekday without excluding the bar', () => {
   const rows: Candle[] = [
     '2024-12-30',
     '2024-12-31',
@@ -151,6 +151,33 @@ it('preserves source date/calendar across a year boundary and marks a historical
     fixtureDataset(rows.filter((_, i) => i !== 2)),
     'weekly',
   );
-  expect(missing.candles[0]!.incomplete).toBe(true);
+  expect(missing.candles[0]!.incomplete).toBe(false);
   expect(missing.metadata.aggregationDetails!.groups[0]!.partial).toBe(true);
+});
+it('keeps holiday-gapped interior periods complete but excludes unfilled edge periods', () => {
+  const day = (time: string, i: number): Candle => ({
+    time: time as Candle['time'],
+    open: 10 + i,
+    high: 20 + i,
+    low: 5 + i,
+    close: 11 + i,
+    volume: 1,
+  });
+  const rows = [
+    // Wed-Fri only: leading edge of the history is unfilled.
+    ...['2024-01-03', '2024-01-04', '2024-01-05'],
+    // Interior week with a Wednesday holiday.
+    ...['2024-01-08', '2024-01-09', '2024-01-11', '2024-01-12'],
+    // Final week stops on Wednesday: trailing edge is unfilled.
+    ...['2024-01-15', '2024-01-16', '2024-01-17'],
+  ].map(day);
+  const weekly = aggregateDaily(fixtureDataset(rows), 'weekly');
+  expect(weekly.candles.map((bar) => bar.incomplete)).toEqual([
+    true,
+    false,
+    true,
+  ]);
+  expect(
+    weekly.metadata.aggregationDetails!.groups.map((group) => group.partial),
+  ).toEqual([true, true, true]);
 });

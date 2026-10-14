@@ -4,7 +4,11 @@ import type { Dataset, Listing, TradingDate } from '../data/types';
 import type { HistoryRequest, AccessProfile } from './types';
 import { ProviderError } from './types';
 import type { ConnectedProvider } from './twelve-data';
-import { exchangeDate, validateCredential } from './twelve-data';
+import {
+  exchangeDate,
+  MAX_PROVIDER_BARS,
+  validateCredential,
+} from './twelve-data';
 
 export type HistoryWindow = '1Y' | '3Y' | '5Y';
 export function historyRequest(
@@ -25,6 +29,14 @@ export function historyRequest(
       Math.ceil((Math.min(5300, Math.max(300, warmupBars)) * 7) / 5) -
       30,
   );
+  // Providers return at most MAX_PROVIDER_BARS daily bars. Weekdays are the
+  // ceiling on sessions, so bounding the span keeps the request under the cap
+  // instead of failing (Yahoo) or truncating the newest bars (ascending order).
+  const oldest = new Date(`${to}T12:00:00Z`);
+  oldest.setUTCDate(
+    oldest.getUTCDate() - Math.floor((MAX_PROVIDER_BARS * 7) / 5) + 7,
+  );
+  if (date < oldest) date.setTime(oldest.getTime());
   return {
     listing,
     interval: 'daily',

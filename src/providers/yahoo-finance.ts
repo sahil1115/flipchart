@@ -166,7 +166,7 @@ export class YahooFinanceProvider implements ConnectedProvider {
       if (
         meta.symbol !== listing.symbol ||
         meta.currency !== 'INR' ||
-        meta.exchangeName !== 'NSI' ||
+        !['NSI', 'NSE'].includes(String(meta.exchangeName)) ||
         meta.exchangeTimezoneName !== 'Asia/Kolkata' ||
         !['EQUITY', 'ETF'].includes(String(meta.instrumentType)) ||
         meta.dataGranularity !== '1d'
@@ -182,12 +182,19 @@ export class YahooFinanceProvider implements ConnectedProvider {
       if (!Array.isArray(indicators.quote) || indicators.quote.length !== 1)
         throw new Error('Invalid quote');
       const quote = object(indicators.quote[0], 'Yahoo quotes');
-      for (const field of ['open', 'high', 'low', 'close', 'volume'])
+      for (const field of ['open', 'high', 'low', 'close'])
         if (
           !Array.isArray(quote[field]) ||
           quote[field].length !== result.timestamp.length
         )
           throw new Error('Unaligned quotes');
+      if (
+        quote.volume !== undefined &&
+        quote.volume !== null &&
+        (!Array.isArray(quote.volume) ||
+          quote.volume.length !== result.timestamp.length)
+      )
+        throw new Error('Unaligned volume');
       const now = this.now();
       const today = exchangeDate(listing.timezone, now);
       const candles = normalizeCandles(
@@ -200,15 +207,19 @@ export class YahooFinanceProvider implements ConnectedProvider {
           const fields = ['open', 'high', 'low', 'close'].map(
             (field) => (quote[field] as unknown[])[index],
           );
-          // Yahoo can return empty slots for sessions with no quote. Never invent OHLC.
-          if (fields.every((value) => value === null)) return [];
+          // Yahoo can return empty or partial slots for sessions with no quote.
+          // Skip those sessions rather than rejecting otherwise usable history;
+          // never fill in missing prices.
+          if (fields.some((value) => value === null)) return [];
           if (
             fields.some(
               (value) => typeof value !== 'number' || !Number.isFinite(value),
             )
           )
             throw new Error('Invalid OHLC');
-          const volume = (quote.volume as unknown[])[index];
+          const volume = Array.isArray(quote.volume)
+            ? quote.volume[index]
+            : null;
           if (
             volume !== null &&
             (typeof volume !== 'number' ||
@@ -267,7 +278,7 @@ export class YahooFinanceProvider implements ConnectedProvider {
       if (error instanceof ProviderError) throw error;
       throw new ProviderError(
         'malformed-response',
-        'Yahoo returned incomplete or inconsistent NSE data. It was not loaded.',
+        `Yahoo returned NSE history the app could not validate (${error instanceof Error ? error.message : 'invalid response'}). It was not loaded.`,
       );
     }
   }
