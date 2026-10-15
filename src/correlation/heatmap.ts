@@ -5,7 +5,7 @@ export function cellColors(value: number | null) {
   const strength = Math.min(1, Math.abs(value));
   const lightness = 96 - strength * 58;
   return {
-    background: `hsl(${value >= 0 ? 214 : 27} ${value >= 0 ? 68 : 82}% ${lightness}%)`,
+    background: `hsl(${value >= 0 ? 214 : 27}, ${value >= 0 ? 68 : 82}%, ${lightness}%)`,
     color: lightness < 60 ? '#ffffff' : '#1b2430',
   };
 }

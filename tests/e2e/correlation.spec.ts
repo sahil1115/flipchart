@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
+import { readFileSync, writeFileSync } from 'node:fs';
 test.use({ serviceWorkers: 'block' });
 
 /** Deterministic Yahoo-shaped daily history for any symbol and requested window. */
@@ -151,6 +152,60 @@ for (const width of [375, 1440])
     });
     expect(await violations()).toEqual([]);
   });
+
+test('copies the branded heatmap as a PNG image and downloads it as JPG', async ({
+  page,
+  context,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'Clipboard image permissions are Chromium-only in Playwright.',
+  );
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await mockRelay(page);
+  await page.goto('/#correlation');
+  await page.getByLabel('Industry').selectOption({ label: 'Financials' });
+  await page.getByRole('button', { name: 'Load correlation' }).click();
+  await expect(heatmap(page).locator('tbody tr')).toHaveCount(10);
+
+  await page.getByRole('button', { name: 'Copy image' }).click();
+  await expect(page.getByText(/Heatmap image copied/)).toBeVisible();
+  const copied = await page.evaluate(async () => {
+    const [item] = await navigator.clipboard.read();
+    const blob = await item!.getType('image/png');
+    const bitmap = await createImageBitmap(blob);
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return {
+      types: item!.types,
+      width: bitmap.width,
+      height: bitmap.height,
+      png: Array.from(bytes.slice(0, 8)),
+      data: btoa(
+        Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''),
+      ),
+    };
+  });
+  expect(copied.types).toContain('image/png');
+  expect(copied.png).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  // Rendered at 2x for sharp pasting.
+  expect(copied.width).toBeGreaterThan(1000);
+  expect(copied.height).toBeGreaterThan(800);
+  writeFileSync(
+    'verification/screenshots/correlation-copied.png',
+    Buffer.from(copied.data, 'base64'),
+  );
+
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download JPG' }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(
+    /^flipchart-correlation-returns-30d-\d{4}-\d{2}-\d{2}\.jpg$/,
+  );
+  const jpg = readFileSync((await file.path())!);
+  expect([...jpg.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
+  writeFileSync('verification/screenshots/correlation-download.jpg', jpg);
+});
 
 test('failed tickers are excluded and named; Back returns to the retained chart', async ({
   page,

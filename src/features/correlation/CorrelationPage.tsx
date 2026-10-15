@@ -18,10 +18,35 @@ import {
   parseTickers,
 } from '../../correlation/markets';
 import type { MarketId } from '../../correlation/markets';
-import { downloadText, spreadsheetText } from '../../import-export/export';
+import {
+  downloadBlob,
+  downloadText,
+  spreadsheetText,
+} from '../../import-export/export';
+import { canvasBlob, drawHeatmap } from '../../correlation/image';
 import { requireOnline } from '../../pwa/network';
 import { ProviderError } from '../../providers/types';
 import { cellColors, formatCorrelation } from '../../correlation/heatmap';
+
+type Loaded = CorrelationResult & {
+  market: string;
+  industry: string;
+  generatedAt: Date;
+};
+const subtitle = (result: Loaded) =>
+  `Pearson correlation of ${result.basis === 'returns' ? 'daily returns' : 'closing prices'}, ${result.period} trading days (${result.dates[0]} – ${result.dates.at(-1)})`;
+const footer = (result: Loaded) =>
+  `Data: Yahoo Finance (unofficial) · Generated ${new Intl.DateTimeFormat(
+    'en-GB',
+    {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    },
+  ).format(result.generatedAt)} · For information only, not financial advice`;
 
 export function CorrelationPage({ onBack }: { onBack: () => void }) {
   const [marketId, setMarketId] = useState<MarketId>('sp500');
@@ -46,14 +71,8 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
   const [failures, setFailures] = useState<
     { ticker: string; message: string }[]
   >([]);
-  const [result, setResult] = useState<
-    | (CorrelationResult & {
-        market: string;
-        industry: string;
-        generatedAt: Date;
-      })
-    | null
-  >(null);
+  const [result, setResult] = useState<Loaded | null>(null);
+  const [imageStatus, setImageStatus] = useState('');
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -61,6 +80,7 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
     const { tickers, invalid } = parseTickers(market, tickerText);
     setError('');
     setFailures([]);
+    setImageStatus('');
     if (invalid.length) {
       setError(
         `Not a valid ${market.name} ticker: ${invalid.join(', ')}. Use symbols such as ${market.industries[0]!.symbols.slice(0, 2).join(', ')}.`,
@@ -130,6 +150,54 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
     controller.current = null;
     setBusy(false);
     setStatus('Request cancelled. The previous heatmap is retained.');
+  }
+
+  function renderImage(loaded: Loaded) {
+    return drawHeatmap(
+      {
+        title: `${loaded.market} · ${loaded.industry}`,
+        subtitle: subtitle(loaded),
+        footer: footer(loaded),
+        symbols: loaded.symbols,
+        matrix: loaded.matrix,
+      },
+      2,
+      getComputedStyle(document.body).fontFamily,
+    );
+  }
+  const imageName = (loaded: Loaded) =>
+    `flipchart-correlation-${loaded.basis}-${loaded.period}d-${loaded.dates.at(-1)}`;
+
+  /** Browsers only put PNG on the clipboard; it pastes like any picture. */
+  async function copyImage() {
+    if (!result) return;
+    const canvas = renderImage(result);
+    const png = canvasBlob(canvas, 'image/png');
+    try {
+      if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write)
+        throw new Error('Image clipboard unsupported');
+      // Pass the pending blob so Safari keeps the click's permission.
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': png }),
+      ]);
+      setImageStatus(
+        'Heatmap image copied. Paste it into Docs, Slides, email or chat.',
+      );
+    } catch {
+      downloadBlob(await png, `${imageName(result)}.png`);
+      setImageStatus(
+        'This browser did not allow copying images, so the image was downloaded as PNG instead.',
+      );
+    }
+  }
+
+  async function downloadJpg() {
+    if (!result) return;
+    downloadBlob(
+      await canvasBlob(renderImage(result), 'image/jpeg'),
+      `${imageName(result)}.jpg`,
+    );
+    setImageStatus('Heatmap image downloaded as JPG.');
   }
 
   function exportCsv() {
@@ -377,24 +445,24 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
               <span className="heatmap-scale" />
               <span>+1</span>
             </div>
-            <figcaption className="heatmap-footer">
-              Data: Yahoo Finance (unofficial) · Generated{' '}
-              {new Intl.DateTimeFormat('en-GB', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZoneName: 'short',
-              }).format(result.generatedAt)}{' '}
-              · For information only, not financial advice
-            </figcaption>
+            <figcaption className="heatmap-footer">{footer(result)}</figcaption>
           </figure>
-          <div className="provider-actions">
+          <div className="provider-actions heatmap-actions">
+            <button type="button" onClick={() => void copyImage()}>
+              Copy image
+            </button>
+            <button type="button" onClick={() => void downloadJpg()}>
+              Download JPG
+            </button>
             <button type="button" onClick={exportCsv}>
               Download CSV
             </button>
           </div>
+          {imageStatus && (
+            <p className="small" role="status">
+              {imageStatus}
+            </p>
+          )}
         </div>
       )}
     </GlassPanel>
