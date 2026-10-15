@@ -10,5 +10,9 @@ export function cellColors(value: number | null) {
   };
 }
 
-export const formatCorrelation = (value: number | null) =>
-  value === null ? '–' : value.toFixed(2).replace('-', '−');
+export function formatCorrelation(value: number | null) {
+  if (value === null) return '–';
+  const text = value.toFixed(2);
+  // A tiny negative rounds to "-0.00"; show it as zero.
+  return text === '-0.00' ? '0.00' : text.replace('-', '−');
+}

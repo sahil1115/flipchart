@@ -110,6 +110,9 @@ for (const width of [375, 1440])
     );
     await page.getByRole('button', { name: 'Load correlation' }).click();
     await expect(heatmap(page).locator('tbody tr')).toHaveCount(5);
+    const card = page.getByTestId('heatmap-card');
+    await expect(card).toContainText('Prepared by FlipChart');
+    await expect(card).toContainText('Data: Yahoo Finance (unofficial)');
     expect(requested.sort()).toEqual(['AAPL', 'AVGO', 'MSFT', 'NVDA', 'ORCL']);
     await expect(heatmap(page).locator('caption')).toContainText(
       'daily returns, 30 trading days',

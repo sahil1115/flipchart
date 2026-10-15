@@ -98,4 +98,6 @@ it('colours positive blue and negative orange with readable text', () => {
   expect(cellColors(null).color).toBe('var(--muted-text)');
   expect(formatCorrelation(-0.371)).toBe('−0.37');
   expect(formatCorrelation(null)).toBe('–');
+  expect(formatCorrelation(-0.001)).toBe('0.00');
+  expect(formatCorrelation(-0.005)).toBe('−0.01');
 });

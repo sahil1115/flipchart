@@ -47,7 +47,12 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
     { ticker: string; message: string }[]
   >([]);
   const [result, setResult] = useState<
-    (CorrelationResult & { market: string; industry: string }) | null
+    | (CorrelationResult & {
+        market: string;
+        industry: string;
+        generatedAt: Date;
+      })
+    | null
   >(null);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
@@ -92,7 +97,12 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
         return;
       }
       const matrix = correlationMatrix(loaded.series, period, basis);
-      setResult({ ...matrix, market: market.name, industry: industry.name });
+      setResult({
+        ...matrix,
+        market: market.name,
+        industry: industry.name,
+        generatedAt: new Date(),
+      });
       setStatus(
         `Showing ${matrix.symbols.length} stocks over ${matrix.observations} ${basis === 'returns' ? 'daily returns' : 'closes'}, ${matrix.dates[0]} – ${matrix.dates.at(-1)}.`,
       );
@@ -297,49 +307,89 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
       )}
       {result && (
         <div className="correlation-result">
-          <div className="heatmap-scroll">
-            <table className="heatmap" data-testid="correlation-heatmap">
-              <caption>
-                {result.market} · {result.industry}: Pearson correlation of{' '}
-                {result.basis === 'returns'
-                  ? 'daily returns'
-                  : 'closing prices'}
-                , {result.period} trading days ({result.dates[0]} –{' '}
-                {result.dates.at(-1)})
-              </caption>
-              <thead>
-                <tr>
-                  <td />
-                  {result.symbols.map((symbol) => (
-                    <th key={symbol} scope="col">
-                      {symbol}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {result.matrix.map((row, i) => (
-                  <tr key={result.symbols[i]}>
-                    <th scope="row">{result.symbols[i]}</th>
-                    {row.map((value, j) => (
-                      <td
-                        key={result.symbols[j]}
-                        style={cellColors(value)}
-                        title={`${result.symbols[i]} · ${result.symbols[j]}: ${value === null ? 'unavailable (no price movement)' : value.toFixed(4)}`}
-                      >
-                        {formatCorrelation(value)}
-                      </td>
+          {/* A self-contained, branded card so a screenshot carries its provenance. */}
+          <figure className="heatmap-card" data-testid="heatmap-card">
+            <div className="heatmap-card-header">
+              <p className="heatmap-title">
+                <strong>
+                  {result.market} · {result.industry}
+                </strong>
+                <span>
+                  Pearson correlation of{' '}
+                  {result.basis === 'returns'
+                    ? 'daily returns'
+                    : 'closing prices'}
+                  , {result.period} trading days{' '}
+                  <span className="heatmap-range">
+                    ({result.dates[0]} – {result.dates.at(-1)})
+                  </span>
+                </span>
+              </p>
+              <p className="heatmap-brand">
+                <span className="heatmap-brand-mark" aria-hidden="true">
+                  F
+                </span>
+                <span>
+                  Prepared by <strong>FlipChart</strong>
+                </span>
+              </p>
+            </div>
+            <div className="heatmap-scroll">
+              <table className="heatmap" data-testid="correlation-heatmap">
+                <caption className="visually-hidden">
+                  {result.market} · {result.industry}: Pearson correlation of{' '}
+                  {result.basis === 'returns'
+                    ? 'daily returns'
+                    : 'closing prices'}
+                  , {result.period} trading days ({result.dates[0]} –{' '}
+                  {result.dates.at(-1)})
+                </caption>
+                <thead>
+                  <tr>
+                    <td />
+                    {result.symbols.map((symbol) => (
+                      <th key={symbol} scope="col">
+                        {symbol}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="heatmap-legend" aria-hidden="true">
-            <span>−1</span>
-            <span className="heatmap-scale" />
-            <span>+1</span>
-          </div>
+                </thead>
+                <tbody>
+                  {result.matrix.map((row, i) => (
+                    <tr key={result.symbols[i]}>
+                      <th scope="row">{result.symbols[i]}</th>
+                      {row.map((value, j) => (
+                        <td
+                          key={result.symbols[j]}
+                          style={cellColors(value)}
+                          title={`${result.symbols[i]} · ${result.symbols[j]}: ${value === null ? 'unavailable (no price movement)' : value.toFixed(4)}`}
+                        >
+                          {formatCorrelation(value)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="heatmap-legend" aria-hidden="true">
+              <span>−1</span>
+              <span className="heatmap-scale" />
+              <span>+1</span>
+            </div>
+            <figcaption className="heatmap-footer">
+              Data: Yahoo Finance (unofficial) · Generated{' '}
+              {new Intl.DateTimeFormat('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZoneName: 'short',
+              }).format(result.generatedAt)}{' '}
+              · For information only, not financial advice
+            </figcaption>
+          </figure>
           <div className="provider-actions">
             <button type="button" onClick={exportCsv}>
               Download CSV
