@@ -53,6 +53,34 @@ it('relays only the fixed Yahoo chart endpoint, respects base paths, and never c
   );
 });
 
+it('accepts US tickers and requests their exchange-local day window', async () => {
+  const fetcher = vi.fn<typeof fetch>(async () =>
+    Response.json({ chart: { result: [], error: null } }),
+  );
+  const origin = await relay(fetcher);
+  for (const symbol of ['AAPL', 'BRK-B'])
+    expect(
+      (
+        await fetch(
+          `${origin}/api/yahoo/history?symbol=${symbol}&from=2025-01-01&to=2025-02-01`,
+        )
+      ).status,
+    ).toBe(200);
+  const url = new URL(String(fetcher.mock.calls[0]![0]));
+  expect(url.pathname).toBe('/v8/finance/chart/AAPL');
+  expect(Number(url.searchParams.get('period1'))).toBe(
+    Date.parse('2025-01-01T00:00:00-05:00') / 1000,
+  );
+  for (const symbol of ['aapl', 'BRK.B', 'TOOLONGTICKER', '-ABC'])
+    expect(
+      (
+        await fetch(
+          `${origin}/api/yahoo/history?symbol=${symbol}&from=2025-01-01&to=2025-02-01`,
+        )
+      ).status,
+    ).toBe(400);
+});
+
 it('blocks foreign origins, non-GET methods, invalid symbols, excessive ranges, and arbitrary destinations before contacting Yahoo', async () => {
   const fetcher = vi.fn<typeof fetch>();
   const origin = await relay(fetcher);
@@ -92,11 +120,11 @@ it('passes quota/access failures honestly and limits repeated local requests', a
     async () => new Response('', { status: 429 }),
   );
   const origin = await relay(fetcher);
-  for (let i = 0; i < 13; i++)
+  for (let i = 0; i < 31; i++)
     expect((await fetch(`${origin}/api/yahoo/history?${query}`)).status).toBe(
       429,
     );
-  expect(fetcher).toHaveBeenCalledTimes(12);
+  expect(fetcher).toHaveBeenCalledTimes(30);
   const rejected = await relay(
     vi.fn(async () => new Response('', { status: 403 })) as typeof fetch,
   );

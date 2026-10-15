@@ -2,7 +2,10 @@ import type { Connect, Plugin } from 'vite';
 import { isTradingDate } from '../data/normalize';
 
 const maxBytes = 3 * 1024 * 1024;
-const symbolPattern = /^[A-Z0-9][A-Z0-9&_-]{0,39}\.NS$/;
+/** NSE symbols end in .NS; US tickers are bare (Yahoo uses '-' for class shares, e.g. BRK-B). */
+export const relaySymbolPattern =
+  /^(?:[A-Z0-9][A-Z0-9&_-]{0,39}\.NS|[A-Z][A-Z0-9-]{0,9})$/;
+const requestsPerMinute = 30;
 
 /** A loopback-only, same-origin route to one fixed public data endpoint. */
 export function createYahooRelay(
@@ -51,7 +54,7 @@ export function createYahooRelay(
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
     if (
-      !symbolPattern.test(symbol) ||
+      !relaySymbolPattern.test(symbol) ||
       !isTradingDate(from) ||
       !isTradingDate(to) ||
       from > to ||
@@ -64,14 +67,14 @@ export function createYahooRelay(
       return reply(
         400,
         'unsupported-listing',
-        'Use an NSE symbol ending in .NS and an ordered date range of at most 30 years.',
+        'Use an NSE symbol ending in .NS or a US ticker, and an ordered date range of at most 30 years.',
       );
     recent = recent.filter((time) => Date.now() - time < 60_000);
-    if (active >= 2 || recent.length >= 12)
+    if (active >= 2 || recent.length >= requestsPerMinute)
       return reply(
         429,
         'quota-exhausted',
-        'Local Yahoo requests are limited to 12 per minute and two at a time. Wait before trying again.',
+        `Local Yahoo requests are limited to ${requestsPerMinute} per minute and two at a time. Wait before trying again.`,
       );
     active++;
     recent.push(Date.now());
@@ -84,13 +87,16 @@ export function createYahooRelay(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,
     );
     upstream.searchParams.set('interval', '1d');
+    // Exchange-local midnight: IST for NSE, US Eastern standard time for US
+    // listings (sessions open at 09:30, so the DST hour never moves a bar).
+    const offset = symbol.endsWith('.NS') ? '+05:30' : '-05:00';
     upstream.searchParams.set(
       'period1',
-      String(Date.parse(`${from}T00:00:00+05:30`) / 1000),
+      String(Date.parse(`${from}T00:00:00${offset}`) / 1000),
     );
     upstream.searchParams.set(
       'period2',
-      String(Date.parse(`${to}T00:00:00+05:30`) / 1000 + 86400),
+      String(Date.parse(`${to}T00:00:00${offset}`) / 1000 + 86400),
     );
     void (async () => {
       try {

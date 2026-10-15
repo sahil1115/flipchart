@@ -3082,3 +3082,140 @@ html[data-theme='glass-light'][data-reduced-effects='true']
   -webkit-backdrop-filter: none;
   box-shadow: none;
 }
+
+/* Correlation heatmap page */
+.correlation-page {
+  padding: 24px;
+  margin-bottom: 24px;
+  overflow-wrap: anywhere;
+}
+.correlation-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 16px;
+  align-items: end;
+  margin: 16px 0;
+}
+.correlation-controls label,
+.correlation-controls fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: calc(12px * var(--text-scale, 1));
+  color: var(--muted-text);
+}
+.correlation-controls legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+.correlation-controls select,
+.correlation-controls input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  color: var(--text);
+  background: var(--surface-opaque);
+}
+.correlation-controls .segmented button {
+  border: 0;
+  padding: 6px 10px;
+  min-height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-text);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.correlation-controls .segmented button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.correlation-tickers {
+  grid-column: 1 / -1;
+}
+.correlation-controls .provider-actions {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.correlation-result {
+  margin-top: 16px;
+}
+.heatmap-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.heatmap {
+  border-collapse: separate;
+  border-spacing: 2px;
+  margin: 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+.heatmap caption {
+  caption-side: top;
+  text-align: left;
+  padding-bottom: 12px;
+  color: var(--muted-text);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.heatmap tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface-opaque);
+}
+.heatmap th {
+  padding: 6px;
+  font-size: calc(12px * var(--text-scale, 1));
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+.heatmap thead th {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  vertical-align: bottom;
+}
+.heatmap td {
+  min-width: 52px;
+  height: 44px;
+  padding: 4px;
+  text-align: center;
+  border-radius: 6px;
+  font-size: calc(13px * var(--text-scale, 1));
+}
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 12px 0;
+  font-size: calc(12px * var(--text-scale, 1));
+  color: var(--muted-text);
+}
+.heatmap-scale {
+  width: min(320px, 60vw);
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    to right,
+    hsl(27 82% 38%),
+    hsl(27 82% 96%),
+    hsl(214 68% 96%),
+    hsl(214 68% 38%)
+  );
+}
+@media (max-width: 600px) {
+  .correlation-page {
+    padding: 16px;
+  }
+  .heatmap td {
+    min-width: 40px;
+    height: 36px;
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+}

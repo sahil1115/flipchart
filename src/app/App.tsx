@@ -27,6 +27,7 @@ import { CsvImportPanel } from '../import-export/CsvImportPanel';
 import { DatasetWorkspace } from '../features/dashboard/DatasetWorkspace';
 import { Landing } from '../features/dashboard/Landing';
 import { ProviderPanel } from '../features/settings/ProviderPanel';
+import { CorrelationPage } from '../features/correlation/CorrelationPage';
 import { AlphaVantageProvider } from '../providers/alpha-vantage';
 import { TwelveDataProvider } from '../providers/twelve-data';
 import { YahooFinanceProvider } from '../providers/yahoo-finance';
@@ -85,6 +86,30 @@ export function App({
     [preference.themeId, preference.terminal],
   );
   const preferenceSaved = useWorkspace((value) => value.preferenceSaved);
+  const routePage = () =>
+    location.hash === '#correlation' ? 'correlation' : 'workspace';
+  const [page, setPage] = useState<'workspace' | 'correlation'>(routePage);
+  useEffect(() => {
+    const sync = () => setPage(routePage());
+    window.addEventListener('popstate', sync);
+    window.addEventListener('hashchange', sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener('hashchange', sync);
+    };
+  }, []);
+  function showPage(next: 'workspace' | 'correlation') {
+    const hash = next === 'correlation' ? '#correlation' : '';
+    if (location.hash !== hash)
+      history.pushState(
+        null,
+        '',
+        `${location.pathname}${location.search}${hash}`,
+      );
+    setPage(next);
+    setThemeOpen(false);
+    setSettingsOpen(false);
+  }
   useEffect(() => {
     applyTheme(theme, preference.reducedEffects);
   }, [theme, preference.reducedEffects]);
@@ -184,6 +209,7 @@ export function App({
     }
   }
   function home() {
+    showPage('workspace');
     live.cancel();
     setProviderOpen(false);
     setState({ status: 'initial' });
@@ -394,7 +420,13 @@ export function App({
                 </GlassPanel>
               )}
             </div>
-            <button className="settings-button" onClick={openProvider}>
+            <button
+              className="settings-button"
+              onClick={() => {
+                showPage('workspace');
+                openProvider();
+              }}
+            >
               Data connection
             </button>
             <button
@@ -407,6 +439,15 @@ export function App({
               }}
             >
               Settings <span aria-hidden="true">⚙</span>
+            </button>
+            <button
+              className="settings-button"
+              aria-pressed={page === 'correlation'}
+              onClick={() =>
+                showPage(page === 'correlation' ? 'workspace' : 'correlation')
+              }
+            >
+              Correlation heatmap
             </button>
             <TypographyPicker value={typography} onChange={setTypography} />
           </div>
@@ -516,211 +557,226 @@ export function App({
               </button>
             </div>
           )}
-          {importOpen && (
-            <CsvImportPanel
-              onImport={(item) => void activate(item)}
-              onCancel={() => setImportOpen(false)}
-            />
+          {page === 'correlation' && (
+            <CorrelationPage onBack={() => showPage('workspace')} />
           )}
-          {providerOpen && (
-            <label className="provider-selector">
-              Market data provider
-              <select
-                aria-label="Market data provider"
-                value={live.provider.id}
-                onChange={(event) => {
-                  live.disconnect();
-                  connectionChanged();
-                  const selectedProvider =
-                    event.target.value === 'yahoo-finance'
-                      ? new YahooFinanceProvider()
-                      : event.target.value === 'alpha-vantage'
-                        ? new AlphaVantageProvider()
-                        : new TwelveDataProvider();
-                  const saved = readCredential(selectedProvider.id);
-                  setConnection({
-                    saved,
-                    session: new LiveSession(
-                      selectedProvider,
-                      saved.credential,
-                    ),
-                  });
-                }}
-              >
-                <option value="twelve-data">Twelve Data</option>
-                <option value="alpha-vantage">Alpha Vantage</option>
-                <option value="yahoo-finance">Yahoo Finance · NSE India</option>
-              </select>
-              <span className="small">
-                Switching clears the old session, requests and loaded provider
-                data. Remembered keys stay separate; memory-only keys must be
-                entered again. No automatic fallback.
-              </span>
-            </label>
-          )}
-          <ProviderPanel
-            key={live.provider.id}
-            open={providerOpen}
-            session={live}
-            saved={connection.saved}
-            activeDataset={dataset}
-            warmupBars={warmupBars}
-            nativeWarmupBars={nativeWarmupBars}
-            onIntent={() => {
-              const token = ++generation.current;
-              setWorking(false);
-              return token;
-            }}
-            onConnectionChanged={connectionChanged}
-            onClose={() => setProviderOpen(false)}
-            onDataset={(item, token) => {
-              if (token !== generation.current) return;
-              setState({ status: 'ready', dataset: item });
-              setImportOpen(false);
-              void store.select(null).then(() => setLibrary(store.snapshot()));
-            }}
-            onRefreshFailure={(token) => {
-              if (token !== generation.current) return;
-              setState((previous) =>
-                previous.status === 'ready' &&
-                previous.dataset.metadata.mode === 'live'
-                  ? {
-                      status: 'ready',
-                      dataset: {
-                        ...previous.dataset,
-                        metadata: {
-                          ...previous.dataset.metadata,
-                          freshness: 'stale',
+          <div className="workspace-view" hidden={page === 'correlation'}>
+            {importOpen && (
+              <CsvImportPanel
+                onImport={(item) => void activate(item)}
+                onCancel={() => setImportOpen(false)}
+              />
+            )}
+            {providerOpen && (
+              <label className="provider-selector">
+                Market data provider
+                <select
+                  aria-label="Market data provider"
+                  value={live.provider.id}
+                  onChange={(event) => {
+                    live.disconnect();
+                    connectionChanged();
+                    const selectedProvider =
+                      event.target.value === 'yahoo-finance'
+                        ? new YahooFinanceProvider()
+                        : event.target.value === 'alpha-vantage'
+                          ? new AlphaVantageProvider()
+                          : new TwelveDataProvider();
+                    const saved = readCredential(selectedProvider.id);
+                    setConnection({
+                      saved,
+                      session: new LiveSession(
+                        selectedProvider,
+                        saved.credential,
+                      ),
+                    });
+                  }}
+                >
+                  <option value="twelve-data">Twelve Data</option>
+                  <option value="alpha-vantage">Alpha Vantage</option>
+                  <option value="yahoo-finance">
+                    Yahoo Finance · NSE India
+                  </option>
+                </select>
+                <span className="small">
+                  Switching clears the old session, requests and loaded provider
+                  data. Remembered keys stay separate; memory-only keys must be
+                  entered again. No automatic fallback.
+                </span>
+              </label>
+            )}
+            <ProviderPanel
+              key={live.provider.id}
+              open={providerOpen}
+              session={live}
+              saved={connection.saved}
+              activeDataset={dataset}
+              warmupBars={warmupBars}
+              nativeWarmupBars={nativeWarmupBars}
+              onIntent={() => {
+                const token = ++generation.current;
+                setWorking(false);
+                return token;
+              }}
+              onConnectionChanged={connectionChanged}
+              onClose={() => setProviderOpen(false)}
+              onDataset={(item, token) => {
+                if (token !== generation.current) return;
+                setState({ status: 'ready', dataset: item });
+                setImportOpen(false);
+                void store
+                  .select(null)
+                  .then(() => setLibrary(store.snapshot()));
+              }}
+              onRefreshFailure={(token) => {
+                if (token !== generation.current) return;
+                setState((previous) =>
+                  previous.status === 'ready' &&
+                  previous.dataset.metadata.mode === 'live'
+                    ? {
+                        status: 'ready',
+                        dataset: {
+                          ...previous.dataset,
+                          metadata: {
+                            ...previous.dataset.metadata,
+                            freshness: 'stale',
+                          },
                         },
-                      },
-                    }
-                  : previous,
-              );
-            }}
-          />
-          {state.status === 'initial' && !importOpen && !providerOpen && (
-            <Landing
-              onDemo={() => void tryDemo()}
-              onImport={openImport}
-              onProvider={openProvider}
+                      }
+                    : previous,
+                );
+              }}
             />
-          )}
-          {state.status === 'loading' && (
-            <GlassPanel className="state-panel" role="status" aria-busy="true">
-              <h2>Preparing the demo…</h2>
-              <p>Loading bundled synthetic price and volume data.</p>
-              <div className="skeleton" />
-            </GlassPanel>
-          )}
-          {state.status === 'error' && (
-            <GlassPanel className="state-panel" role="alert">
-              <h2>Could not load the demo</h2>
-              <p>An unexpected error interrupted loading. Please try again.</p>
-              <button className="primary" onClick={() => void tryDemo()}>
-                Try again
-              </button>
-            </GlassPanel>
-          )}
-          {dataset && (
-            <DatasetWorkspace
-              dataset={dataset}
-              theme={theme}
-              onChangeData={home}
-              onHistoryRequirement={historyRequirement}
-            />
-          )}
-          {library.datasets.length > 0 && (
-            <GlassPanel
-              className="recent-panel"
-              aria-label="Recent datasets and listings"
-            >
-              <div className="panel-heading">
-                <div>
-                  <h2>Recent datasets & listings</h2>
-                  <p className="small">
-                    {library.persistent
-                      ? 'Saved in this browser'
-                      : 'Session only'}{' '}
-                    · newest selected first · at most 10 datasets, 100,000 bars
-                    and 20 MiB · oldest datasets evicted at limits
-                  </p>
-                </div>
-                <button onClick={openImport}>Import another CSV</button>
-              </div>
-              <div className="recent-list">
-                {library.datasets.map((item) => (
-                  <div className="recent-item" key={item.metadata.id}>
-                    <div>
-                      <span className="badge">
-                        {item.metadata.mode.toUpperCase()}
-                      </span>
-                      <strong>{item.metadata.listing.symbol}</strong>
-                      <span className="small">
-                        {item.metadata.listing.exchange ??
-                          'Exchange unavailable'}{' '}
-                        ·{' '}
-                        {item.metadata.listing.currency ??
-                          'Currency unavailable'}{' '}
-                        · {item.candles.length.toLocaleString('en-US')} bars
-                        {' · '}
-                        {item.metadata.importConventions?.filename ??
-                          'Synthetic demo'}
-                        {' · '}
-                        {item.metadata.latestCandleTime ?? 'Date unavailable'}
-                      </span>
-                    </div>
-                    <div className="recent-actions">
-                      <button
-                        disabled={working}
-                        aria-label={
-                          'Open dataset ' +
-                          item.metadata.listing.symbol +
-                          ' ' +
-                          item.metadata.mode
-                        }
-                        onClick={() =>
-                          void libraryAction(
-                            () => store.select(item.metadata.id),
-                            () => {
-                              setState({ status: 'ready', dataset: item });
-                              setImportOpen(false);
-                            },
-                          )
-                        }
-                      >
-                        {dataset?.metadata.id === item.metadata.id
-                          ? 'Selected'
-                          : 'Open'}
-                      </button>
-                      <button
-                        disabled={working}
-                        aria-label={
-                          'Delete dataset ' +
-                          item.metadata.listing.symbol +
-                          ' ' +
-                          item.metadata.mode
-                        }
-                        onClick={() =>
-                          void libraryAction(
-                            () => store.delete(item.metadata.id),
-                            () => {
-                              if (dataset?.metadata.id === item.metadata.id)
-                                setState({ status: 'initial' });
-                              setNotice(
-                                'Deleted only this dataset from the local library.',
-                              );
-                            },
-                          )
-                        }
-                      >
-                        Delete Dataset
-                      </button>
-                    </div>
+            {state.status === 'initial' && !importOpen && !providerOpen && (
+              <Landing
+                onDemo={() => void tryDemo()}
+                onImport={openImport}
+                onProvider={openProvider}
+              />
+            )}
+            {state.status === 'loading' && (
+              <GlassPanel
+                className="state-panel"
+                role="status"
+                aria-busy="true"
+              >
+                <h2>Preparing the demo…</h2>
+                <p>Loading bundled synthetic price and volume data.</p>
+                <div className="skeleton" />
+              </GlassPanel>
+            )}
+            {state.status === 'error' && (
+              <GlassPanel className="state-panel" role="alert">
+                <h2>Could not load the demo</h2>
+                <p>
+                  An unexpected error interrupted loading. Please try again.
+                </p>
+                <button className="primary" onClick={() => void tryDemo()}>
+                  Try again
+                </button>
+              </GlassPanel>
+            )}
+            {dataset && (
+              <DatasetWorkspace
+                dataset={dataset}
+                theme={theme}
+                onChangeData={home}
+                onHistoryRequirement={historyRequirement}
+              />
+            )}
+            {library.datasets.length > 0 && (
+              <GlassPanel
+                className="recent-panel"
+                aria-label="Recent datasets and listings"
+              >
+                <div className="panel-heading">
+                  <div>
+                    <h2>Recent datasets & listings</h2>
+                    <p className="small">
+                      {library.persistent
+                        ? 'Saved in this browser'
+                        : 'Session only'}{' '}
+                      · newest selected first · at most 10 datasets, 100,000
+                      bars and 20 MiB · oldest datasets evicted at limits
+                    </p>
                   </div>
-                ))}
-              </div>
-            </GlassPanel>
-          )}
+                  <button onClick={openImport}>Import another CSV</button>
+                </div>
+                <div className="recent-list">
+                  {library.datasets.map((item) => (
+                    <div className="recent-item" key={item.metadata.id}>
+                      <div>
+                        <span className="badge">
+                          {item.metadata.mode.toUpperCase()}
+                        </span>
+                        <strong>{item.metadata.listing.symbol}</strong>
+                        <span className="small">
+                          {item.metadata.listing.exchange ??
+                            'Exchange unavailable'}{' '}
+                          ·{' '}
+                          {item.metadata.listing.currency ??
+                            'Currency unavailable'}{' '}
+                          · {item.candles.length.toLocaleString('en-US')} bars
+                          {' · '}
+                          {item.metadata.importConventions?.filename ??
+                            'Synthetic demo'}
+                          {' · '}
+                          {item.metadata.latestCandleTime ?? 'Date unavailable'}
+                        </span>
+                      </div>
+                      <div className="recent-actions">
+                        <button
+                          disabled={working}
+                          aria-label={
+                            'Open dataset ' +
+                            item.metadata.listing.symbol +
+                            ' ' +
+                            item.metadata.mode
+                          }
+                          onClick={() =>
+                            void libraryAction(
+                              () => store.select(item.metadata.id),
+                              () => {
+                                setState({ status: 'ready', dataset: item });
+                                setImportOpen(false);
+                              },
+                            )
+                          }
+                        >
+                          {dataset?.metadata.id === item.metadata.id
+                            ? 'Selected'
+                            : 'Open'}
+                        </button>
+                        <button
+                          disabled={working}
+                          aria-label={
+                            'Delete dataset ' +
+                            item.metadata.listing.symbol +
+                            ' ' +
+                            item.metadata.mode
+                          }
+                          onClick={() =>
+                            void libraryAction(
+                              () => store.delete(item.metadata.id),
+                              () => {
+                                if (dataset?.metadata.id === item.metadata.id)
+                                  setState({ status: 'initial' });
+                                setNotice(
+                                  'Deleted only this dataset from the local library.',
+                                );
+                              },
+                            )
+                          }
+                        >
+                          Delete Dataset
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlassPanel>
+            )}
+          </div>
         </main>
         <footer className="app-footer">
           <div>
