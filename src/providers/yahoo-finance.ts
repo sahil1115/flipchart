@@ -197,6 +197,7 @@ export class YahooFinanceProvider implements ConnectedProvider {
         throw new Error('Unaligned volume');
       const now = this.now();
       const today = exchangeDate(listing.timezone, now);
+      let skipped = 0;
       const candles = normalizeCandles(
         result.timestamp.flatMap((stamp, index): Candle[] => {
           if (typeof stamp !== 'number' || !Number.isInteger(stamp))
@@ -210,7 +211,10 @@ export class YahooFinanceProvider implements ConnectedProvider {
           // Yahoo can return empty or partial slots for sessions with no quote.
           // Skip those sessions rather than rejecting otherwise usable history;
           // never fill in missing prices.
-          if (fields.some((value) => value === null)) return [];
+          if (fields.some((value) => value === null)) {
+            skipped++;
+            return [];
+          }
           if (
             fields.some(
               (value) => typeof value !== 'number' || !Number.isFinite(value),
@@ -272,6 +276,7 @@ export class YahooFinanceProvider implements ConnectedProvider {
           freshness: 'unknown',
           delay: 'unknown',
           aggregation: null,
+          ...(skipped ? { skippedSessions: skipped } : {}),
         },
       });
     } catch (error) {

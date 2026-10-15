@@ -38,6 +38,8 @@ export interface Dataset {
       'historical-demo' | 'historical-import' | 'fresh' | 'stale' | 'unknown';
     delay: 'synthetic' | 'end-of-day' | 'delayed' | 'unknown';
     aggregation: string | null;
+    /** Provider sessions dropped because their prices were missing. */
+    skippedSessions?: number;
     importConventions?: {
       filename: string;
       dateFormat: string;

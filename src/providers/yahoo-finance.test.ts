@@ -138,6 +138,13 @@ it('skips partially empty slots, accepts the NSE exchange alias and tolerates a 
     '2025-01-03',
   ]);
   expect(data.candles.every((bar) => bar.volume === null)).toBe(true);
+  expect(data.metadata.skippedSessions).toBe(1);
+  const clean = await provider(yahooHistory(3)).api.getOHLCV(
+    request,
+    '',
+    signal(),
+  );
+  expect(clean.metadata.skippedSessions).toBeUndefined();
 });
 
 it('names the failed validation in the malformed-response message', async () => {

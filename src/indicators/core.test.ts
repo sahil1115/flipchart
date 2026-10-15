@@ -87,8 +87,16 @@ it('honestly propagates unknown volume and recovers only complete rolling window
   const input = bars
     .slice(0, 4)
     .map((bar, i) => ({ ...bar, volume: i === 2 ? null : 10 }));
-  expect(obv(input)).toEqual([10, 20, null, null]);
+  expect(obv(input)).toEqual([10, 20, null, 10]);
   expect(calculate(input, defaults).rsi).toEqual([null, null, null, null]);
+});
+it('restarts OBV from the next known volume after an unknown-volume gap', () => {
+  const input = bars.slice(0, 6).map((bar, i) => ({
+    ...bar,
+    close: [10, 11, 12, 13, 12, 14][i]!,
+    volume: [5, 2, null, 4, 3, 6][i]!,
+  }));
+  expect(obv(input)).toEqual([5, 7, null, 4, 1, 7]);
 });
 it('uses first-volume OBV baseline and unchanged total on equal closes', () => {
   const input = bars.slice(0, 4).map((bar, i) => ({

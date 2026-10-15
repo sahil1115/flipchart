@@ -56,3 +56,38 @@ it('requires metadata presence but allows explicit unavailable provider listing 
   });
   expect(result.metadata.listing.timezone).toBeNull();
 });
+it('accepts a non-negative skipped-session count only on provider datasets', () => {
+  const demo = createDemoDataset('2026-10-09T12:00:00Z');
+  expect(() =>
+    validateDataset({
+      ...demo,
+      metadata: { ...demo.metadata, skippedSessions: 1 },
+    }),
+  ).toThrow('Skipped sessions');
+  const live = {
+    ...demo,
+    metadata: {
+      ...demo.metadata,
+      id: 'live:yahoo-finance:x',
+      listing: { ...demo.metadata.listing, id: 'live:yahoo-finance:X' },
+      provider: 'yahoo-finance',
+      mode: 'live',
+      adjustment: 'unknown',
+      freshness: 'unknown',
+      delay: 'unknown',
+    },
+  };
+  expect(
+    validateDataset({
+      ...live,
+      metadata: { ...live.metadata, skippedSessions: 2 },
+    }).metadata.skippedSessions,
+  ).toBe(2);
+  for (const bad of [-1, 1.5, '1'])
+    expect(() =>
+      validateDataset({
+        ...live,
+        metadata: { ...live.metadata, skippedSessions: bad },
+      }),
+    ).toThrow('Skipped sessions');
+});

@@ -238,7 +238,7 @@ export function ProviderPanel({
       loadedRequest.current = request;
       onDataset(dataset, token);
       setStatus(
-        `Loaded ${dataset.candles.length.toLocaleString('en-US')} ${dataset.metadata.interval} bars. Actual coverage ${dataset.metadata.coverage?.from} – ${dataset.metadata.coverage?.to}.`,
+        `Loaded ${dataset.candles.length.toLocaleString('en-US')} ${dataset.metadata.interval} bars. Actual coverage ${dataset.metadata.coverage?.from} – ${dataset.metadata.coverage?.to}.${dataset.metadata.skippedSessions ? ` ${dataset.metadata.skippedSessions.toLocaleString('en-US')} ${dataset.metadata.skippedSessions === 1 ? 'session' : 'sessions'} with missing prices skipped.` : ''}`,
       );
     } catch (error) {
       if (

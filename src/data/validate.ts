@@ -186,6 +186,18 @@ export function validateDataset(input: unknown): Dataset {
     delay,
     aggregation: text(m.aggregation, 'aggregation', true),
   };
+  if (m.skippedSessions !== undefined) {
+    if (
+      mode !== 'live' ||
+      typeof m.skippedSessions !== 'number' ||
+      !Number.isInteger(m.skippedSessions) ||
+      m.skippedSessions < 0
+    )
+      throw new DatasetValidationError(
+        'Skipped sessions must be a non-negative count on provider data.',
+      );
+    metadata.skippedSessions = m.skippedSessions;
+  }
   if (m.importConventions !== undefined) {
     if (mode !== 'import')
       throw new DatasetValidationError(

@@ -361,6 +361,14 @@ export function DatasetWorkspace({
           valid values show their actual date.
         </div>
       )}
+      {live && metadata.skippedSessions ? (
+        <div className="notice" role="status">
+          {metadata.skippedSessions.toLocaleString('en-US')}{' '}
+          {metadata.skippedSessions === 1 ? 'session was' : 'sessions were'}{' '}
+          skipped because the provider returned missing prices. They are not
+          filled in or estimated.
+        </div>
+      ) : null}
       {unknownVolume > 0 && (
         <div className="notice" role="status">
           {unknownVolume.toLocaleString('en-US')}{' '}

@@ -220,7 +220,7 @@ export function definitions(
       group: 'Volume',
       units: 'volume',
       formula:
-        'Starts at first finalized volume; adds/subtracts current volume when close rises/falls, unchanged on equal close. Unknown volume makes the cumulative total unavailable from that point.',
+        'Starts at first finalized volume; adds/subtracts current volume when close rises/falls, unchanged on equal close. Unknown volume leaves a gap and the total restarts from the next known volume, so values before and after a gap are not comparable.',
       required: 1,
       series: [{ name: 'OBV', values: o.obv }],
     },

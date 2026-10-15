@@ -216,14 +216,21 @@ export function macd(
   );
   return { line, signal, histogram };
 }
+/**
+ * Unknown volume leaves a gap. OBV restarts from the first known volume after
+ * it, as at the start of the series, so one missing session does not disable
+ * the indicator for the rest of the history.
+ */
 export function obv(candles: readonly Candle[]): Values {
-  let total: number | null = 0;
+  let total: number | null = null;
   return candles.map((bar, i) => {
-    if (bar.volume === null) total = null;
-    if (total === null) return null;
-    if (i === 0) total = bar.volume!;
+    if (bar.volume === null) {
+      total = null;
+      return null;
+    }
+    if (total === null) total = bar.volume;
     else if (bar.close !== candles[i - 1]!.close)
-      total += bar.close > candles[i - 1]!.close ? bar.volume! : -bar.volume!;
+      total += bar.close > candles[i - 1]!.close ? bar.volume : -bar.volume;
     return finite(total);
   });
 }
