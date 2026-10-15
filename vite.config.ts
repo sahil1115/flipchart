@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { yahooRelayPlugin } from './src/server/yahoo-relay';
+import { contentSecurityPolicyPlugin } from './src/server/csp';
 
 export default defineConfig({
   base: process.env.FLIPCHART_BASE ?? '/',
@@ -10,6 +11,7 @@ export default defineConfig({
   preview: { host: '127.0.0.1', port: 4179, strictPort: true },
   plugins: [
     yahooRelayPlugin(),
+    contentSecurityPolicyPlugin(),
     react(),
     tailwindcss(),
     VitePWA({
