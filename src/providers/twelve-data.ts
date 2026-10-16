@@ -91,6 +91,18 @@ function safeText(
     fail('malformed-response');
   return value.trim();
 }
+/**
+ * Twelve Data reports minor-unit quotes in mixed case (GBp = pence). Map them to
+ * their conventional codes; upper-casing GBp to GBP would overstate prices 100×.
+ */
+const minorUnitCurrencies: Readonly<Record<string, string>> = {
+  GBp: 'GBX',
+  ZAc: 'ZAC',
+  ILa: 'ILA',
+};
+export function currencyCode(value: string | null): string | null {
+  return value === null ? null : (minorUnitCurrencies[value] ?? value);
+}
 function number(value: unknown, nullable = false): number | null {
   if (nullable && (value === undefined || value === null || value === ''))
     return null;
@@ -263,32 +275,38 @@ export class TwelveDataProvider implements ConnectedProvider {
         fail('malformed-response');
       const listings: Listing[] = [];
       for (const value of data.data) {
-        const row = object(value, 'search listing');
-        if (
-          ![
-            'Common Stock',
-            'ETF',
-            'Preferred Stock',
-            'Depositary Receipt',
-            'REIT',
-          ].includes(String(row.instrument_type))
-        )
+        // One unusable row (odd currency, timezone or text) is skipped; it
+        // must not hide every other match for the query.
+        try {
+          const row = object(value, 'search listing');
+          if (
+            ![
+              'Common Stock',
+              'ETF',
+              'Preferred Stock',
+              'Depositary Receipt',
+              'REIT',
+            ].includes(String(row.instrument_type))
+          )
+            continue;
+          const symbol = safeText(row.symbol, credential, true)!,
+            exchange = safeText(row.exchange, credential),
+            mic = safeText(row.mic_code, credential);
+          if (!exchange && !mic) continue;
+          const listing = validateListing({
+            id: `live:twelve-data:${encodeURIComponent(JSON.stringify([symbol, mic, exchange]))}`,
+            symbol,
+            exchange,
+            mic,
+            name: safeText(row.instrument_name, credential),
+            currency: currencyCode(safeText(row.currency, credential)),
+            timezone: safeText(row.exchange_timezone, credential),
+          });
+          if (!listings.some((item) => item.id === listing.id))
+            listings.push(listing);
+        } catch {
           continue;
-        const symbol = safeText(row.symbol, credential, true)!,
-          exchange = safeText(row.exchange, credential),
-          mic = safeText(row.mic_code, credential);
-        if (!exchange && !mic) continue;
-        const listing = validateListing({
-          id: `live:twelve-data:${encodeURIComponent(JSON.stringify([symbol, mic, exchange]))}`,
-          symbol,
-          exchange,
-          mic,
-          name: safeText(row.instrument_name, credential),
-          currency: safeText(row.currency, credential),
-          timezone: safeText(row.exchange_timezone, credential),
-        });
-        if (!listings.some((item) => item.id === listing.id))
-          listings.push(listing);
+        }
       }
       return listings;
     } catch {
@@ -355,7 +373,7 @@ export class TwelveDataProvider implements ConnectedProvider {
         fail('malformed-response');
       const actualListing = validateListing({
         ...listing,
-        currency: safeText(meta.currency, credential, true),
+        currency: currencyCode(safeText(meta.currency, credential, true)),
         timezone: safeText(meta.exchange_timezone, credential, true),
         exchange,
         mic,
