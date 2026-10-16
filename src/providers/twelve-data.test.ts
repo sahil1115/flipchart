@@ -6,6 +6,7 @@ import {
   fixtureCredential,
   request,
   listing,
+  secondListing,
 } from '../../tests/fixtures/twelve-data';
 import { TwelveDataProvider } from './twelve-data';
 const now = () => new Date('2026-10-09T12:00:00Z');
@@ -218,4 +219,81 @@ describe('typed failure paths and redaction', () => {
       provider.getOHLCV(request, fixtureCredential, controller.signal),
     ).rejects.toHaveProperty('category', 'cancelled');
   });
+});
+it('keeps every usable search match when one row is invalid and maps minor-unit currencies', async () => {
+  const row = (fields: Record<string, string>) => ({
+    symbol: 'TSLA',
+    instrument_name: 'Tesla Inc',
+    instrument_type: 'Common Stock',
+    ...fields,
+  });
+  const { provider } = setup({
+    status: 'ok',
+    data: [
+      row({
+        exchange: 'NASDAQ',
+        mic_code: 'XNGS',
+        currency: 'USD',
+        exchange_timezone: 'America/New_York',
+      }),
+      // Twelve Data reports London pence as "GBp" (seen live for TSLA).
+      row({
+        exchange: 'LSE',
+        mic_code: 'XLON',
+        currency: 'GBp',
+        exchange_timezone: 'Europe/London',
+        instrument_type: 'ETF',
+      }),
+      row({
+        exchange: 'JSE',
+        mic_code: 'XJSE',
+        currency: 'ZAc',
+        exchange_timezone: 'Africa/Johannesburg',
+      }),
+      // An unusable row is skipped instead of failing the whole search.
+      row({
+        exchange: 'XXX',
+        mic_code: 'XXXX',
+        currency: 'USD',
+        exchange_timezone: 'Not/AZone',
+      }),
+      row({
+        exchange: 'BAD',
+        mic_code: 'XBAD',
+        currency: 'usd',
+        exchange_timezone: 'UTC',
+      }),
+    ],
+  });
+  const matches = await provider.searchSymbol(
+    'TSLA',
+    fixtureCredential,
+    signal(),
+  );
+  expect(matches.map((match) => [match.mic, match.currency])).toEqual([
+    ['XNGS', 'USD'],
+    ['XLON', 'GBX'],
+    ['XJSE', 'ZAC'],
+  ]);
+  // A malformed envelope is still rejected.
+  await expect(
+    setup({ status: 'ok', data: 'not-a-list' }).provider.searchSymbol(
+      'TSLA',
+      fixtureCredential,
+      signal(),
+    ),
+  ).rejects.toMatchObject({ category: 'malformed-response' });
+});
+it('loads history quoted in pence as GBX rather than rejecting or mislabelling it as GBP', async () => {
+  const london = { ...secondListing, currency: 'GBX' };
+  const { provider } = setup(
+    historyResponse({ ...secondListing, currency: 'GBp' }),
+  );
+  const dataset = await provider.getOHLCV(
+    { ...request, listing: london },
+    fixtureCredential,
+    signal(),
+  );
+  expect(dataset.metadata.listing.currency).toBe('GBX');
+  expect(dataset.candles.length).toBeGreaterThan(0);
 });
