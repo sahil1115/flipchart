@@ -12,7 +12,13 @@ import {
 import type { Dataset } from '../data/types';
 import { loadDemo } from '../demo/load';
 import { useWorkspace } from '../state/workspace';
-import { applyTheme, resolveTheme, themes } from '../themes/themes';
+import {
+  applyTheme,
+  loadThemeFont,
+  resolveTheme,
+  themeFontReady,
+  themes,
+} from '../themes/themes';
 import {
   readThemePreference,
   writeThemePreference,
@@ -81,10 +87,28 @@ export function App({
   const [preference, setPreference] = useState(readThemePreference);
   const [typography, setTypography] = useState(readTypographyPreference);
   const generation = useRef(0);
+  // Bumped when a theme's web font finishes loading; the fresh theme object
+  // makes the canvas charts re-apply their font with real glyph metrics.
+  const [fontRevision, setFontRevision] = useState(0);
   const theme = useMemo(
-    () => resolveTheme(preference.themeId, preference.terminal),
-    [preference.themeId, preference.terminal],
+    () => ({
+      ...resolveTheme(preference.themeId, preference.terminal),
+      fontRevision,
+    }),
+    [preference.themeId, preference.terminal, fontRevision],
   );
+  useEffect(() => {
+    if (themeFontReady(theme)) return;
+    let current = true;
+    void loadThemeFont(theme).then(() => {
+      // Only re-render once the font is usable; a failed load must not loop.
+      if (current && themeFontReady(theme))
+        setFontRevision((revision) => revision + 1);
+    });
+    return () => {
+      current = false;
+    };
+  }, [theme]);
   const preferenceSaved = useWorkspace((value) => value.preferenceSaved);
   const routePage = () =>
     location.hash === '#correlation' ? 'correlation' : 'workspace';

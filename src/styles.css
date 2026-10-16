@@ -3288,3 +3288,47 @@ html[data-theme='glass-light'][data-reduced-effects='true']
     font-size: calc(11px * var(--text-scale, 1));
   }
 }
+
+/* Notebook theme: ruled paper, black-ink handwriting, yellow highlighter. */
+html[data-theme='notebook'] {
+  background-attachment: fixed;
+  /* Patrick Hand has one weight; avoid smeared faux-bold strokes. */
+  font-synthesis: none;
+}
+html[data-theme='notebook'] .glass-panel {
+  backdrop-filter: none;
+  background: var(--surface);
+}
+html[data-theme='notebook'] :is(h1, h2) {
+  font-weight: 400;
+  /* A thick underline drawn behind the glyphs reads as a highlighter stroke
+     and repeats on every wrapped line. */
+  text-decoration-line: underline;
+  text-decoration-color: #fff27a;
+  text-decoration-thickness: 0.42em;
+  text-underline-offset: -0.28em;
+  text-decoration-skip-ink: none;
+}
+html[data-theme='notebook'] :is(button, select) {
+  font-weight: 400;
+  border-color: rgba(30, 31, 34, 0.45);
+  border-radius: 10px 8px 12px 7px / 8px 11px 7px 10px;
+}
+html[data-theme='notebook'] button:hover {
+  background: #fff8c4;
+  border-color: var(--text);
+}
+html[data-theme='notebook'] :is(button.primary, button[aria-pressed='true']),
+html[data-theme='notebook'] .segmented button[aria-pressed='true'],
+html[data-theme='notebook'] .range-buttons button[aria-pressed='true'] {
+  background: #fff27a;
+  color: var(--text);
+  border-color: var(--text);
+  box-shadow: none;
+}
+html[data-theme='notebook'] .brand-mark {
+  background: transparent;
+  color: var(--text);
+  border: 2px solid var(--text);
+  border-radius: 12px 8px 13px 9px / 9px 12px 8px 13px;
+}

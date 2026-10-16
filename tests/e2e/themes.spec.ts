@@ -24,6 +24,8 @@ for (const width of [375, 1440]) {
       ['Ocean Blue', 'ocean-blue', 'rgb(237, 246, 255)'],
       ['Plum Noir', 'plum-noir', 'rgb(34, 28, 45)'],
       ['Terminal', 'terminal-amber', 'rgb(0, 0, 0)'],
+      // Frosted Mono stays last: the reload check below expects it restored.
+      ['Notebook', 'notebook', 'rgb(255, 254, 249)'],
       ['Frosted Mono', 'frosted-mono', 'rgb(243, 242, 238)'],
     ]) {
       await page.getByRole('radio', { name, exact: true }).check();
@@ -33,6 +35,18 @@ for (const width of [375, 1440]) {
       await expect(
         page.getByRole('region', { name: 'Dataset summary' }),
       ).toContainText('FLIP');
+      if (id === 'notebook') {
+        // The bundled handwriting font loads from this origin under the CSP.
+        await expect
+          .poll(() =>
+            page.evaluate(() => document.fonts.check("16px 'Patrick Hand'")),
+          )
+          .toBe(true);
+        await expect(page.locator('h1')).toHaveCSS(
+          'font-family',
+          /Patrick Hand/,
+        );
+      }
       if (id === 'frosted-mono') {
         await expect(page.locator('.summary-price > strong')).toHaveCSS(
           'color',
@@ -142,3 +156,28 @@ for (const width of [375, 1440]) {
     expect(errors).toEqual([]);
   });
 }
+
+test('a saved Notebook theme restores with its font before the chart draws', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Theme', exact: true }).click();
+  await page.getByRole('radio', { name: 'Notebook', exact: true }).check();
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'notebook');
+  // Startup waits for the font, so it is ready by the time the app renders.
+  await page.getByRole('button', { name: /Try Demo/ }).click();
+  const chart = page.getByTestId('price-chart');
+  await expect(chart.locator('canvas').first()).toBeVisible();
+  expect(
+    await page.evaluate(() => document.fonts.check("16px 'Patrick Hand'")),
+  ).toBe(true);
+  await expect(chart).toHaveCSS('background-color', 'rgb(255, 254, 249)');
+  await page.screenshot({
+    path: 'verification/screenshots/notebook-restored.png',
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
+});

@@ -30,7 +30,7 @@ No backend, database server, or API key is needed for demo data or CSV imports.
 - Pan and zoom the chart, change the date range, and adjust calculation parameters below the workspace.
 - Save listings to your watchlist and export chart data as CSV.
 - Choose **Correlation heatmap** at the top to see how closely the largest stocks in an industry moved together. Pick a market (Dow Jones, S&P 500, Nasdaq-100, or NSE India), an industry, the top 5 or 10 stocks, and a 15- or 30-trading-day period, then choose **Load correlation**. Use **Copy image** to paste the branded heatmap into a document, or download it as JPG or CSV. It uses the local Yahoo relay, so it needs `npm run dev` or `npm run preview`.
-- Use the top **Theme** button to choose Glass Light, Soft Clay, Midnight Clay, Frosted Mono, Ocean Blue, Plum Noir, or Terminal. Open Settings to reduce visual effects.
+- Use the top **Theme** button to choose Glass Light, Soft Clay, Midnight Clay, Frosted Mono, Ocean Blue, Plum Noir, Notebook (ruled paper, handwriting and highlighter), or Terminal. Open Settings to reduce visual effects.
 - The Terminal theme offers Dark/White backgrounds and Solar Yellow, Heritage Gold, Electric Blue, Emerald Green, Rose Pink, Royal Purple, or Pure Contrast accents. Pure Contrast uses white on black or black on white.
 - Use **Text** at the top right to change the font or make text smaller/larger. Your text settings stay saved in this browser.
 

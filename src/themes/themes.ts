@@ -254,6 +254,48 @@ export const plumNoir: ThemeDefinition = {
     areaBottom: 'rgba(244,188,122,0.01)',
   },
 };
+/** Ruled notebook paper, black-ink handwriting and yellow highlighter. */
+export const notebookFont = 'Patrick Hand';
+export const notebook: ThemeDefinition = {
+  id: 'notebook',
+  name: 'Notebook',
+  colorScheme: 'light',
+  css: {
+    ...glassLight.css,
+    '--page-background':
+      'linear-gradient(90deg, transparent 54px, #e8a3a3 54px, #e8a3a3 56px, transparent 56px), repeating-linear-gradient(#fbfaf5 0 27px, #c9d8ee 27px 28px), #fbfaf5',
+    '--surface': '#fffef9',
+    '--surface-opaque': '#fdfcf6',
+    '--surface-elevated': '#f6f3e7',
+    '--plot': '#fffef9',
+    '--border': 'rgba(43, 43, 43, 0.22)',
+    '--text': '#1e1f22',
+    '--muted-text': '#4f5560',
+    '--accent': '#1f4fa3',
+    '--accent-soft': '#fff3a3',
+    '--positive': '#2e7d32',
+    '--negative': '#c62828',
+    '--focus-ring': '#1f4fa3',
+    '--on-accent': '#ffffff',
+    '--shadow': '0 1px 0 rgba(0,0,0,0.08), 0 8px 18px -12px rgba(0,0,0,0.25)',
+    '--control-shadow': 'none',
+    '--radius': '6px',
+    '--control-radius': '8px',
+    '--theme-font-family': `'${notebookFont}', 'Segoe Print', 'Comic Sans MS', cursive`,
+  },
+  chart: {
+    background: '#fffef9',
+    text: '#4f5560',
+    grid: '#d6e1f2',
+    border: '#c9cfd8',
+    crosshair: '#1f4fa3',
+    positive: '#2e7d32',
+    negative: '#c62828',
+    accent: '#1e1f22',
+    areaTop: 'rgba(30,31,34,0.14)',
+    areaBottom: 'rgba(30,31,34,0.01)',
+  },
+};
 export const terminalAccents = {
   yellow: { name: 'Solar Yellow', dark: '#ffe566', white: '#806600' },
   gold: { name: 'Heritage Gold', dark: '#ffb74d', white: '#946200' },
@@ -333,6 +375,7 @@ export const themes: Readonly<Record<string, ThemeDefinition>> = {
   [frostedMono.id]: frostedMono,
   [oceanBlue.id]: oceanBlue,
   [plumNoir.id]: plumNoir,
+  [notebook.id]: notebook,
   [terminalAmber.id]: terminalAmber,
 };
 export const resolveTheme = (
@@ -342,6 +385,30 @@ export const resolveTheme = (
   id === terminalAmber.id
     ? terminalTheme(terminal)
     : (themes[id] ?? glassLight);
+/**
+ * Canvas charts measure label widths once, so a theme's web font must be loaded
+ * before they draw with it. Resolves (never rejects) once the font is usable.
+ */
+export function loadThemeFont(theme: ThemeDefinition): Promise<void> {
+  if (
+    theme.id !== notebook.id ||
+    typeof document === 'undefined' ||
+    !document.fonts
+  )
+    return Promise.resolve();
+  return document.fonts.load(`16px '${notebookFont}'`).then(
+    () => undefined,
+    () => undefined,
+  );
+}
+export function themeFontReady(theme: ThemeDefinition): boolean {
+  return (
+    theme.id !== notebook.id ||
+    typeof document === 'undefined' ||
+    !document.fonts ||
+    document.fonts.check(`16px '${notebookFont}'`)
+  );
+}
 export function applyTheme(theme: ThemeDefinition, reducedEffects: boolean) {
   const root = document.documentElement;
   root.dataset.theme = theme.id;

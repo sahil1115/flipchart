@@ -27,7 +27,7 @@ export default defineConfig({
         'apple-touch-icon.png',
       ],
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest,woff2}'],
       },
       manifest: {
         name: 'FlipChart',
