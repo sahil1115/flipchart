@@ -166,7 +166,7 @@ for (const width of [375, 1440]) {
       path: `verification/screenshots/deepseek-layout-${width}.png`,
       fullPage: true,
     });
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page
       .getByRole('radio', { name: 'Frosted Mono', exact: true })
       .check();

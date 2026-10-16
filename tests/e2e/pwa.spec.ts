@@ -36,9 +36,7 @@ test('offline reopening retains demo, parameters and provenance without provider
   await expect(page.locator('footer .footer-attribution').first()).toHaveText(
     date!,
   );
-  await page
-    .getByRole('button', { name: 'Data connection', exact: true })
-    .click();
+  await page.getByRole('button', { name: /^Data source/ }).click();
   await page.getByLabel('Twelve Data API key').fill('fixture-offline-only');
   await page.getByRole('button', { name: 'Use key', exact: true }).click();
   await page

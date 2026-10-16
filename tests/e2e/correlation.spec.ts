@@ -94,14 +94,16 @@ for (const width of [375, 1440])
     const violations = await trackViolations(page);
     const requested = await mockRelay(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Correlation heatmap' }).click();
+    await page.getByRole('link', { name: 'Correlation', exact: true }).click();
     await expect(page).toHaveURL(/#correlation$/);
     await expect(
       page.getByRole('heading', { name: 'Correlation heatmap' }),
     ).toBeVisible();
     expect(requested).toEqual([]);
 
-    await page.getByLabel('Market').selectOption({ label: 'S&P 500' });
+    await page
+      .getByLabel('Market', { exact: true })
+      .selectOption({ label: 'S&P 500' });
     await page
       .getByLabel('Industry')
       .selectOption({ label: 'Information technology' });
@@ -126,7 +128,9 @@ for (const width of [375, 1440])
       page.locator('.correlation-page').getByRole('status').first(),
     ).toContainText('over 30 daily returns');
 
-    await page.getByLabel('Market').selectOption({ label: 'NSE India' });
+    await page
+      .getByLabel('Market', { exact: true })
+      .selectOption({ label: 'NSE India' });
     await page.getByLabel('Industry').selectOption({ label: 'Banking' });
     await page.getByRole('button', { name: 'Top 10' }).click();
     await page.getByRole('button', { name: '15 days' }).click();
@@ -215,7 +219,7 @@ test('failed tickers are excluded and named; Back returns to the retained chart'
   await page.getByRole('button', { name: /Try Demo/ }).click();
   const chart = page.getByTestId('price-chart');
   await expect(chart.locator('canvas').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Correlation heatmap' }).click();
+  await page.getByRole('link', { name: 'Correlation', exact: true }).click();
   await expect(chart).toBeHidden();
   await page.getByRole('button', { name: 'Top 5' }).click();
   await page.getByRole('button', { name: 'Load correlation' }).click();

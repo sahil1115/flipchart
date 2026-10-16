@@ -36,7 +36,7 @@ it('switches and restores themes without dropping the active dataset', async () 
   );
   fireEvent.click(screen.getByRole('button', { name: /Try Demo/ }));
   expect(await screen.findByText('Chart ready')).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: 'Theme' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   fireEvent.click(screen.getByRole('radio', { name: 'Soft Clay' }));
   expect(document.documentElement).toHaveAttribute('data-theme', 'soft-clay');
   expect(screen.getByText('Chart ready')).toBeVisible();
@@ -50,10 +50,10 @@ it('switches and restores themes without dropping the active dataset', async () 
   expect(screen.getByText('Chart ready')).toBeVisible();
   view.unmount();
   render(<App repository={repository()} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Theme' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(screen.getByRole('radio', { name: 'Frosted Mono' })).toBeChecked();
   fireEvent.keyDown(document, { key: 'Escape' });
-  expect(screen.getByRole('button', { name: 'Theme' })).toHaveFocus();
+  expect(screen.getByRole('button', { name: 'Settings' })).toHaveFocus();
   expect(screen.queryByRole('radio')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /Settings/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Reset Preferences' }));

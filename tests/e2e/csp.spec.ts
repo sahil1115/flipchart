@@ -54,7 +54,7 @@ test('the real app runs without a single policy violation', async ({
     page.getByTestId('price-chart').locator('canvas').first(),
   ).toBeVisible();
   // Every theme sets CSS variables and chart colors at runtime.
-  await page.getByRole('button', { name: 'Theme', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const themes = page.getByRole('radio');
   for (let index = 0; index < (await themes.count()); index++)
     await themes.nth(index).check();

@@ -52,13 +52,9 @@ async function alpha(page: Page) {
 
   await page.goto('/');
 
-  await page
+  await page.getByRole('button', { name: /^Data source/ }).click();
 
-    .getByRole('button', { name: 'Data connection', exact: true })
-
-    .click();
-
-  await page.getByLabel('Market data provider').selectOption('alpha-vantage');
+  await page.getByRole('radio', { name: 'Alpha Vantage' }).check();
 
   await page.getByLabel('Alpha Vantage API key').fill(alphaCredential);
 
@@ -73,6 +69,11 @@ async function alpha(page: Page) {
       failure = value;
     },
   };
+}
+
+async function openData(page: Page) {
+  const pill = page.getByRole('button', { name: /^Data source/ });
+  if ((await pill.getAttribute('aria-expanded')) !== 'true') await pill.click();
 }
 
 async function select(page: Page) {
@@ -114,6 +115,8 @@ test('Alpha Vantage compact, weekly and monthly load manually; premium errors re
   expect(fixture.requests).toHaveLength(calls);
 
   for (const interval of ['weekly', 'monthly']) {
+    await openData(page);
+
     await page
 
       .getByLabel('Provider interval', { exact: true })
@@ -126,16 +129,14 @@ test('Alpha Vantage compact, weekly and monthly load manually; premium errors re
 
       .click();
 
-    await expect(
-      page
-
-        .getByRole('status')
-
-        .filter({ hasText: `Loaded 100 ${interval} bars` }),
-    ).toBeVisible();
+    await expect(page.locator('.provider-panel')).toContainText(
+      `Loaded 100 ${interval} bars`,
+    );
   }
 
   fixture.fail(`premium outputsize=full ${alphaCredential}`);
+
+  await openData(page);
 
   await page
 
@@ -148,6 +149,8 @@ test('Alpha Vantage compact, weekly and monthly load manually; premium errors re
   );
 
   await expect(page.locator('body')).not.toContainText(alphaCredential);
+
+  await page.getByRole('button', { name: 'Close connection panel' }).click();
 
   await expect(
     page.getByRole('region', { name: 'Price workspace' }),
@@ -183,15 +186,11 @@ test('watchlist selection fetches only after Load; remembered credentials remain
 
   await select(page);
 
-  await page
-
-    .getByRole('button', { name: 'Add selected listing to watchlist' })
-
-    .click();
+  await page.getByRole('button', { name: /^Save FIX\.LON/ }).click();
 
   const count = fixture.requests.length;
 
-  await page.getByRole('button', { name: 'Select watchlist FIX.LON' }).click();
+  await page.getByRole('button', { name: /^Select saved FIX\.LON/ }).click();
 
   expect(fixture.requests).toHaveLength(count);
 
@@ -201,7 +200,9 @@ test('watchlist selection fetches only after Load; remembered credentials remain
     page.getByRole('region', { name: 'Price workspace' }),
   ).toBeVisible();
 
-  await page.getByLabel('Market data provider').selectOption('twelve-data');
+  await openData(page);
+
+  await page.getByRole('radio', { name: 'Twelve Data' }).check();
 
   await expect(
     page.getByRole('region', { name: 'Price workspace' }),
@@ -209,7 +210,9 @@ test('watchlist selection fetches only after Load; remembered credentials remain
 
   await expect(page.getByLabel('Twelve Data API key')).toHaveValue('');
 
-  await page.getByLabel('Market data provider').selectOption('alpha-vantage');
+  await page.getByRole('radio', { name: 'Alpha Vantage' }).check();
+
+  await page.getByRole('button', { name: 'Manage', exact: true }).click();
 
   await expect(page.getByLabel('Alpha Vantage API key')).toHaveValue(
     alphaCredential,
@@ -226,21 +229,17 @@ test('watchlist selection fetches only after Load; remembered credentials remain
   ).toBeNull();
 
   await expect(
-    page.getByRole('button', { name: 'Select watchlist FIX.LON' }),
+    page.getByRole('button', { name: /^Select saved FIX\.LON/ }),
   ).toBeDisabled();
 
   await page.reload();
 
-  await page
+  await page.getByRole('button', { name: /^Data source/ }).click();
 
-    .getByRole('button', { name: 'Data connection', exact: true })
-
-    .click();
-
-  await page.getByLabel('Market data provider').selectOption('alpha-vantage');
+  await page.getByRole('radio', { name: 'Alpha Vantage' }).check();
 
   await expect(
-    page.getByRole('button', { name: 'Select watchlist FIX.LON' }),
+    page.getByRole('button', { name: /^Select saved FIX\.LON/ }),
   ).toBeDisabled();
 
   expect(

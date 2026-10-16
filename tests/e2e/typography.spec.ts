@@ -21,7 +21,7 @@ for (const width of [375, 1440]) {
     const originalSize = await rsi
       .locator('strong')
       .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
-    const control = page.getByRole('button', { name: 'Text', exact: true });
+    const control = page.getByRole('button', { name: 'Settings', exact: true });
     await page
       .getByLabel('Export scope', { exact: true })
       .selectOption('visible');
@@ -38,11 +38,11 @@ for (const width of [375, 1440]) {
     };
     const beforeWindow = await visibleWindow();
     await control.click();
-    await expect(page.getByLabel('Font style', { exact: true })).toBeFocused();
-    const picker = page.getByRole('region', {
-      name: 'Text settings',
-      exact: true,
-    });
+    // The Settings menu opens on the current theme, with text controls below.
+    await expect(
+      page.getByRole('radio', { name: 'Glass Light', exact: true }),
+    ).toBeFocused();
+    const picker = page.locator('#settings-menu');
     await expect(picker).toHaveCSS('background-color', 'rgb(246, 250, 255)');
     await expect(picker.getByRole('option')).toHaveCount(3);
     await page
@@ -128,7 +128,7 @@ for (const width of [375, 1440]) {
       '100%',
     );
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page
       .getByRole('radio', { name: 'Midnight Clay', exact: true })
       .check();
@@ -140,7 +140,7 @@ for (const width of [375, 1440]) {
     await page
       .getByRole('button', { name: 'Reset Preferences', exact: true })
       .click();
-    await control.click();
+    // The Settings menu stays open after a reset, with text controls visible.
     await expect(page.getByLabel('Font style', { exact: true })).toHaveValue(
       'system',
     );

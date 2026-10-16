@@ -17,7 +17,7 @@ for (const width of [375, 1440]) {
         ),
     );
     const canvases = await chart.locator('canvas').count();
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     for (const [name, id, background] of [
       ['Soft Clay', 'soft-clay', 'rgb(228, 231, 235)'],
       ['Midnight Clay', 'midnight-clay', 'rgb(35, 44, 58)'],
@@ -61,7 +61,7 @@ for (const width of [375, 1440]) {
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
-      await page.getByRole('button', { name: /Settings/ }).click();
+      // Reduce visual effects lives in the same open Settings menu.
       await page.getByLabel('Reduce visual effects').check();
       await expect(page.locator('.price-plot')).toHaveCSS('box-shadow', 'none');
       await expect(
@@ -72,8 +72,6 @@ for (const width of [375, 1440]) {
         path: `verification/screenshots/${id}-${width}.png`,
         fullPage: true,
       });
-      await page.getByRole('button', { name: /Settings/ }).click();
-      await page.getByRole('button', { name: 'Theme', exact: true }).click();
       if (
         id === 'ocean-blue' ||
         id === 'plum-noir' ||
@@ -91,7 +89,9 @@ for (const width of [375, 1440]) {
             '2px',
           );
         }
-        await page.getByRole('button', { name: 'Text', exact: true }).click();
+        await page
+          .getByRole('button', { name: 'Settings', exact: true })
+          .click();
         await page
           .getByLabel('Font style', { exact: true })
           .selectOption('arial');
@@ -99,9 +99,7 @@ for (const width of [375, 1440]) {
         await page
           .getByRole('button', { name: 'Increase font size', exact: true })
           .click();
-        await expect(
-          page.getByRole('region', { name: 'Text settings' }),
-        ).toHaveCSS(
+        await expect(page.locator('#settings-menu')).toHaveCSS(
           'background-color',
           id === 'ocean-blue'
             ? 'rgb(242, 248, 255)'
@@ -113,11 +111,13 @@ for (const width of [375, 1440]) {
           .getByRole('button', { name: 'Default', exact: true })
           .click();
         await page.keyboard.press('Escape');
-        await page.getByRole('button', { name: 'Theme', exact: true }).click();
+        await page
+          .getByRole('button', { name: 'Settings', exact: true })
+          .click();
       }
       if (width === 1440) {
         await page
-          .locator('#theme-menu')
+          .locator('#settings-menu')
           .screenshot({ path: `verification/screenshots/${id}-picker.png` });
         if (id === 'frosted-mono') {
           await page.screenshot({
@@ -132,7 +132,7 @@ for (const width of [375, 1440]) {
       'frosted-mono',
     );
     await expect(chart.locator('canvas').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('radio', { name: 'Glass Light' }).check();
     await expect(chart).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await expect(page.locator('.theme-option').first()).toHaveCSS(
@@ -146,13 +146,13 @@ for (const width of [375, 1440]) {
     await page
       .getByRole('radio', { name: 'Soft Clay', exact: true })
       .press('Escape');
-    await expect(page.locator('#theme-menu')).toHaveCount(0);
+    await expect(page.locator('#settings-menu')).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: 'Theme', exact: true }),
+      page.getByRole('button', { name: 'Settings', exact: true }),
     ).toBeFocused();
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.locator('.app-header').click({ position: { x: 1, y: 1 } });
-    await expect(page.locator('#theme-menu')).toHaveCount(0);
+    await expect(page.locator('#settings-menu')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 }
@@ -163,7 +163,7 @@ test('a saved Notebook theme restores with its font before the chart draws', asy
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
-  await page.getByRole('button', { name: 'Theme', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('radio', { name: 'Notebook', exact: true }).check();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'notebook');

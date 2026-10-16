@@ -84,7 +84,9 @@ for (const width of [375, 768, 1440]) {
     await expect(summary).toContainText('Asia/Kolkata');
     await expect(summary).toContainText('2024-01-04');
     await expect(summary).not.toContainText('SYNTHETIC');
-    await expect(page.locator('.header-status')).toContainText('Imported CSV');
+    await expect(
+      page.getByRole('button', { name: /^Data source: CSV/ }),
+    ).toBeVisible();
     await expect(page.getByText(/1 bar has unknown volume/)).toBeVisible();
     await expect(
       page.getByTestId('price-chart').locator('canvas').first(),
@@ -167,7 +169,7 @@ test('row-specific errors, explicit date formats, mapping and template download'
     page.getByRole('region', { name: 'Dataset summary' }),
   ).toContainText('2024-03-02');
   await expect(page.getByText(/Volume pane unavailable/)).toBeVisible();
-  await page.getByRole('button', { name: 'Change data' }).click();
+  await page.getByRole('link', { name: 'FlipChart home' }).click();
   await prepare(page, 'date,open,high,low,close\n2024-01-02,10,9,8,12');
   await page.getByRole('button', { name: 'Validate data' }).click();
   await expect(page.getByRole('alert')).toContainText(
@@ -183,7 +185,7 @@ test('cache deletion and preference reset have independent scopes', async ({
   await page.goto('/');
   await prepare(page);
   await load(page);
-  await page.getByRole('button', { name: 'Change data' }).click();
+  await page.getByRole('link', { name: 'FlipChart home' }).click();
   await page.getByRole('button', { name: /Try Demo/ }).click();
   await expect(
     page.getByRole('button', { name: 'Open dataset FLIP demo' }),
@@ -217,6 +219,8 @@ test('cache deletion and preference reset have independent scopes', async ({
   await expect(
     page.getByRole('region', { name: 'Dataset summary' }),
   ).toContainText('FLIP');
+  // Clicking the page closed the Settings menu; reopen it for Clear Cache.
+  await page.getByRole('button', { name: /Settings/ }).click();
   await expect(
     page.getByRole('button', { name: 'Clear Cache', exact: true }),
   ).toBeEnabled();

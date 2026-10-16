@@ -43,6 +43,7 @@ for (const width of [375, 768, 1440])
     await expect(roc.locator('strong')).toHaveText(value!);
     await page.getByRole('button', { name: /Settings/ }).click();
     await page.getByLabel('Reduce visual effects').check();
+    await page.keyboard.press('Escape');
     await expect(roc.locator('strong')).toHaveText(value!);
     await page
       .getByRole('button', { name: 'Weekly interval', exact: true })

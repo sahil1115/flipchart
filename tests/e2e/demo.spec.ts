@@ -26,7 +26,7 @@ for (const width of [375, 768, 1440]) {
     await page.getByRole('button', { name: 'Cancel import' }).click();
     await page.getByRole('button', { name: /Connect Provider/ }).click();
     await expect(
-      page.getByRole('heading', { name: 'Connect Twelve Data' }),
+      page.getByRole('heading', { name: 'Data source' }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Close connection panel' }).click();
     await page.getByRole('button', { name: /Try Demo/ }).click();
@@ -113,7 +113,7 @@ for (const width of [375, 768, 1440]) {
       fullPage: true,
     });
     for (let i = 0; i < 3; i++) {
-      await page.getByRole('button', { name: 'Change data' }).click();
+      await page.getByRole('link', { name: 'FlipChart home' }).click();
       await expect(page.getByTestId('price-chart')).toHaveCount(0);
       await page.getByRole('button', { name: /Try Demo/ }).click();
       await expect(chart.locator('canvas')).toHaveCount(canvasCount);

@@ -20,18 +20,14 @@ for (const width of [375, 1440]) {
     });
     await page.goto('/');
     await page.getByRole('button', { name: /Connect Provider/ }).click();
-    await page
-      .getByLabel('Market data provider', { exact: true })
-      .selectOption('yahoo-finance');
-    const panel = page.getByRole('region', {
-      name: 'Yahoo Finance connection',
-    });
+    await page.getByRole('radio', { name: 'Yahoo · NSE' }).check();
+    const panel = page.getByRole('dialog', { name: 'Data source' });
     await expect(panel.getByText(/no API key/i)).toBeVisible();
     await expect(panel.getByLabel('Yahoo Finance API key')).toHaveCount(0);
     await page
       .getByLabel('NSE trading symbol', { exact: true })
       .fill('fixture');
-    await panel.getByRole('button', { name: /FIXTURE.NS · NSE/ }).click();
+    await panel.getByRole('button', { name: /^FIXTURE.NS · NSE/ }).click();
     expect(calls).toBe(0);
     await panel
       .getByRole('button', { name: 'Load history', exact: true })
@@ -56,13 +52,12 @@ for (const width of [375, 1440]) {
       'Adjustment: unknown',
     );
     expect(calls).toBe(1);
+    // A successful load closes the drawer; reopen it from the header pill.
+    await page.getByRole('button', { name: /^Data source/ }).click();
     await page.getByLabel('History window', { exact: true }).selectOption('3Y');
     expect(calls).toBe(1);
-    await page
-      .getByRole('button', {
-        name: 'Add selected listing to watchlist',
-        exact: true,
-      })
+    await panel
+      .getByRole('button', { name: 'Save FIXTURE.NS · NSE', exact: true })
       .click();
     failure = true;
     await panel
@@ -92,12 +87,10 @@ for (const width of [375, 1440]) {
     await page.reload();
     expect(calls).toBe(2);
     await page.getByRole('button', { name: /Connect Provider/ }).click();
-    await page
-      .getByLabel('Market data provider', { exact: true })
-      .selectOption('yahoo-finance');
+    await page.getByRole('radio', { name: 'Yahoo · NSE' }).check();
     await expect(
       page.getByRole('button', {
-        name: 'Select watchlist FIXTURE.NS',
+        name: 'Select saved FIXTURE.NS · NSE',
         exact: true,
       }),
     ).toBeVisible();

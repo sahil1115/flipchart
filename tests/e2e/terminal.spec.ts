@@ -17,7 +17,7 @@ for (const width of [375, 1440]) {
     await expect(chart.locator('canvas').first()).toBeVisible();
     await page.mouse.move(0, 0);
     const latest = await page.locator('.summary-price > strong').textContent();
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('radio', { name: 'Terminal', exact: true }).check();
     for (const [name, background] of [
       ['Dark', 'rgb(0, 0, 0)'],
@@ -68,12 +68,12 @@ for (const width of [375, 1440]) {
       await page.screenshot({
         path: `verification/screenshots/terminal-${name!.toLowerCase()}-${width}.png`,
       });
-      await page.getByRole('button', { name: 'Theme', exact: true }).click();
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
     }
     await page.reload();
     await expect(chart).toHaveCSS('background-color', 'rgb(255, 255, 255)');
     await expect(page.locator('html')).toHaveCSS('font-family', /Consolas/);
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(
       page.getByRole('radio', { name: 'White', exact: true }),
     ).toBeChecked();
@@ -90,7 +90,7 @@ for (const width of [375, 1440]) {
       page.getByRole('radio', { name: 'Pure Contrast accent', exact: true }),
     ).toBeChecked();
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Text', exact: true }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page
       .getByLabel('Font style', { exact: true })
       .selectOption('verdana');

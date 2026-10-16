@@ -74,11 +74,13 @@ async function fixtureProvider(page: Page) {
     },
   };
 }
+async function openData(page: Page) {
+  const pill = page.getByRole('button', { name: /^Data source/ });
+  if ((await pill.getAttribute('aria-expanded')) !== 'true') await pill.click();
+}
 async function connect(page: Page, remember = false) {
   await page.goto('/');
-  await page
-    .getByRole('button', { name: 'Data connection', exact: true })
-    .click();
+  await openData(page);
   const key = page.getByLabel('Twelve Data API key');
   await expect(key).toHaveAttribute('type', 'password');
   await key.fill(fixtureCredential);
@@ -86,10 +88,11 @@ async function connect(page: Page, remember = false) {
   await page.getByRole('button', { name: 'Use key', exact: true }).click();
 }
 async function chooseListing(page: Page, exchange = 'NASDAQ') {
+  await openData(page);
   await page.getByLabel('Search symbol or company').fill('');
   await page.getByLabel('Search symbol or company').fill('FI');
   await page
-    .getByRole('button', { name: new RegExp(`FIX · ${exchange}`) })
+    .getByRole('button', { name: new RegExp(`^FIX · ${exchange}`) })
     .click();
 }
 async function loaded(page: Page, currency = 'USD') {
@@ -111,6 +114,7 @@ for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await connect(page);
     expect(fixture.requests).toHaveLength(0);
+    await page.getByRole('button', { name: 'Manage', exact: true }).click();
     await page.getByRole('button', { name: 'Show key' }).click();
     await expect(page.getByLabel('Twelve Data API key')).toHaveAttribute(
       'type',
@@ -123,7 +127,7 @@ for (const width of [375, 768, 1440]) {
     await expect(page.locator('.provider-panel')).toContainText(
       'Provider-reported usage: 2/8',
     );
-    await page.getByRole('heading', { name: 'Connect Twelve Data' }).click();
+    await page.getByRole('heading', { name: 'Data source' }).click();
     await page.keyboard.press('/');
     await expect(page.getByLabel('Search symbol or company')).toBeFocused();
     await chooseListing(page);
@@ -144,6 +148,7 @@ for (const width of [375, 768, 1440]) {
       'FIX · LSE',
     );
     if (width === 1440) {
+      await openData(page);
       await page.locator('.provider-results').screenshot({
         path: 'verification/screenshots/selected-stock-results.png',
       });
@@ -162,6 +167,7 @@ for (const width of [375, 768, 1440]) {
     const history = fixture.requests.at(-1)!;
     expect(history.searchParams.get('mic_code')).toBe('XNAS');
     expect(history.searchParams.get('start_date')! < '2025-10-09').toBe(true);
+    await openData(page);
     await page
       .getByRole('button', { name: 'Load history', exact: true })
       .click();
@@ -182,6 +188,7 @@ for (const width of [375, 768, 1440]) {
     ).toContainText('Latest valid');
     await page.getByRole('button', { name: /Settings/ }).click();
     await page.getByLabel('Reduce visual effects').check();
+    await page.keyboard.press('Escape');
     await page
       .getByRole('button', { name: 'Weekly interval', exact: true })
       .click();
@@ -194,6 +201,7 @@ for (const width of [375, 768, 1440]) {
     await page
       .getByRole('button', { name: 'Daily interval', exact: true })
       .click();
+    await openData(page);
     await page.getByLabel('History window').selectOption('3Y');
     await page.getByLabel('Provider price adjustment').selectOption('adjusted');
     expect(fixture.requests).toHaveLength(3);
@@ -227,6 +235,7 @@ test('exchange selection separates caches; failed refresh preserves the chart an
   await page.getByRole('button', { name: 'Load history', exact: true }).click();
   await loaded(page);
   fixture.fail(429);
+  await openData(page);
   await page.getByRole('button', { name: 'Refresh loaded data' }).click();
   await expect(page.getByRole('alert')).toContainText('quota is exhausted');
   await expect(page.locator('.provider-panel')).toContainText(
@@ -294,9 +303,8 @@ test('remember is explicit; reload makes no requests; preference/cache controls 
     page.getByTestId('price-chart').locator('canvas').first(),
   ).toBeVisible();
   await page.reload();
-  await page
-    .getByRole('button', { name: 'Data connection', exact: true })
-    .click();
+  await openData(page);
+  await page.getByRole('button', { name: 'Manage', exact: true }).click();
   await expect(page.getByLabel('Twelve Data API key')).toHaveValue(
     fixtureCredential,
   );
@@ -307,6 +315,7 @@ test('remember is explicit; reload makes no requests; preference/cache controls 
   expect(fixture.requests).toHaveLength(0);
   await page.getByRole('button', { name: /Settings/ }).click();
   await page.getByRole('button', { name: 'Reset Preferences' }).click();
+  await page.keyboard.press('Escape');
   await expect(page.getByLabel('Remember on this device')).toBeChecked();
   await chooseListing(page);
   await page.getByRole('button', { name: 'Load history', exact: true }).click();
@@ -331,6 +340,7 @@ test('remember is explicit; reload makes no requests; preference/cache controls 
   );
   expect(stored).not.toContain(fixtureCredential);
   expect(stored).not.toContain('twelve-data');
+  await openData(page);
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
   await expect(page.getByTestId('price-chart')).toHaveCount(0);
   await expect(page.getByLabel('Twelve Data API key')).toHaveValue('');
@@ -339,6 +349,7 @@ test('remember is explicit; reload makes no requests; preference/cache controls 
       localStorage.getItem('flipchart:credential:twelve-data'),
     ),
   ).toBeNull();
+  await page.getByRole('button', { name: 'Close connection panel' }).click();
   await page.getByRole('button', { name: /Open dataset .* demo/ }).click();
   await expect(
     page.getByRole('region', { name: 'Dataset summary' }),
@@ -381,13 +392,16 @@ test('search debounces typing; slash stays in an input; Clear Cache retains cred
   await page
     .getByLabel('Search symbol or company')
     .pressSequentially('FICT', { delay: 50 });
-  await page.getByRole('button', { name: /FIX · NASDAQ/ }).click();
+  await page.getByRole('button', { name: /^FIX · NASDAQ/ }).click();
   expect(fixture.requests).toHaveLength(1);
   await page.getByRole('button', { name: 'Load history', exact: true }).click();
   await loaded(page);
   await page.getByRole('button', { name: /Settings/ }).click();
   await page.getByRole('button', { name: 'Clear Cache', exact: true }).click();
   await expect(page.getByTestId('price-chart')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await openData(page);
+  await page.getByRole('button', { name: 'Manage', exact: true }).click();
   await expect(page.getByLabel('Twelve Data API key')).toHaveValue(
     fixtureCredential,
   );
@@ -399,6 +413,7 @@ test('search debounces typing; slash stays in an input; Clear Cache retains cred
   await page.getByRole('button', { name: 'Load history', exact: true }).click();
   await loaded(page);
   expect(fixture.requests).toHaveLength(3);
+  await openData(page);
   await page.getByLabel('Twelve Data API key').focus();
   await page.keyboard.press('/');
   await expect(page.getByLabel('Twelve Data API key')).toBeFocused();

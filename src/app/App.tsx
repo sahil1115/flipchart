@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { PwaControls } from '../pwa/PwaControls';
 import { GlassPanel } from '../components/GlassPanel';
-import { TypographyPicker } from '../components/TypographyPicker';
-import { TerminalSettings } from '../components/TerminalSettings';
+import { SettingsMenu } from '../components/SettingsMenu';
 import { TypographyContext } from '../themes/TypographyContext';
 import {
   applyTypography,
@@ -17,7 +23,6 @@ import {
   loadThemeFont,
   resolveTheme,
   themeFontReady,
-  themes,
 } from '../themes/themes';
 import {
   readThemePreference,
@@ -79,9 +84,8 @@ export function App({
   const [state, setState] = useState<LoadState>({ status: 'initial' });
   const [notice, setNotice] = useState('');
   const [importOpen, setImportOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [themeOpen, setThemeOpen] = useState(false);
-  const themeControl = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const pillRef = useRef<HTMLButtonElement>(null);
   const [working, setWorking] = useState(false);
   const [preferenceWarning, setPreferenceWarning] = useState('');
   const [preference, setPreference] = useState(readThemePreference);
@@ -131,8 +135,6 @@ export function App({
         `${location.pathname}${location.search}${hash}`,
       );
     setPage(next);
-    setThemeOpen(false);
-    setSettingsOpen(false);
   }
   useEffect(() => {
     applyTheme(theme, preference.reducedEffects);
@@ -156,27 +158,21 @@ export function App({
     };
   }, [store]);
 
-  useEffect(() => {
-    if (!themeOpen) return;
-    themeControl.current
-      ?.querySelector<HTMLInputElement>('input:checked')
-      ?.focus();
-    const dismiss = (event: PointerEvent) => {
-      if (!themeControl.current?.contains(event.target as Node))
-        setThemeOpen(false);
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setThemeOpen(false);
-      themeControl.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    };
-    document.addEventListener('pointerdown', dismiss);
-    document.addEventListener('keydown', escape);
-    return () => {
-      document.removeEventListener('pointerdown', dismiss);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [themeOpen]);
+  // The data-source drawer sits directly below the sticky header.
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const update = () =>
+      document.documentElement.style.setProperty(
+        '--header-height',
+        `${header.getBoundingClientRect().height}px`,
+      );
+    update();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
 
   async function activate(dataset: Dataset, token = ++generation.current) {
     live.cancel();
@@ -242,6 +238,28 @@ export function App({
     void libraryAction(() => store.select(null));
   }
   const dataset = state.status === 'ready' ? state.dataset : null;
+  const source: {
+    name: string;
+    symbol: string | null;
+    tone: 'live' | 'local' | 'idle';
+  } = !dataset
+    ? { name: 'Connect data', symbol: null, tone: 'idle' }
+    : dataset.metadata.mode === 'live'
+      ? {
+          name:
+            dataset.metadata.provider === 'yahoo-finance'
+              ? 'Yahoo Finance'
+              : dataset.metadata.provider === 'alpha-vantage'
+                ? 'Alpha Vantage'
+                : 'Twelve Data',
+          symbol: dataset.metadata.listing.symbol,
+          tone: 'live',
+        }
+      : {
+          name: dataset.metadata.mode === 'demo' ? 'Demo' : 'CSV',
+          symbol: dataset.metadata.listing.symbol,
+          tone: 'local',
+        };
   function openImport() {
     live.cancel();
     setProviderOpen(false);
@@ -256,6 +274,49 @@ export function App({
     setProviderOpen(true);
     setImportOpen(false);
     setNotice('');
+  }
+  function closeProvider() {
+    setProviderOpen(false);
+    pillRef.current?.focus();
+  }
+  function switchProvider(id: string) {
+    if (id === live.provider.id) return;
+    live.disconnect();
+    connectionChanged();
+    const selectedProvider =
+      id === 'yahoo-finance'
+        ? new YahooFinanceProvider()
+        : id === 'alpha-vantage'
+          ? new AlphaVantageProvider()
+          : new TwelveDataProvider();
+    const saved = readCredential(selectedProvider.id);
+    setConnection({
+      saved,
+      session: new LiveSession(selectedProvider, saved.credential),
+    });
+  }
+  function updatePreference(next: typeof preference) {
+    setPreference(next);
+    setPreferenceWarning(
+      writeThemePreference(next)
+        ? ''
+        : 'Browser storage is unavailable. Appearance applies for this session.',
+    );
+  }
+  function clearCache() {
+    void libraryAction(
+      () => {
+        live.clearCache();
+        return store.clear();
+      },
+      () => {
+        setState({ status: 'initial' });
+        setImportOpen(false);
+        setNotice(
+          'Dataset caches and recent listings cleared. Appearance, chart view and saved key preferences retained.',
+        );
+      },
+    );
   }
   function connectionChanged() {
     ++generation.current;
@@ -297,7 +358,7 @@ export function App({
         <a className="skip-link" href="#workspace">
           Skip to workspace
         </a>
-        <header className="app-header">
+        <header className="app-header" ref={headerRef}>
           <a
             href="#"
             className="brand"
@@ -314,233 +375,105 @@ export function App({
               FlipChart<span className="brand-caption">A clearer view</span>
             </span>
           </a>
-          {dataset && (
-            <button
-              className="header-listing"
-              onClick={home}
-              aria-label="Change data"
-            >
-              <strong>{dataset.metadata.listing.symbol}</strong>
-              <span>
-                {dataset.metadata.listing.name ??
-                  dataset.metadata.listing.exchange}
-              </span>
-              <span aria-hidden="true">⌄</span>
-            </button>
-          )}
-          <div className="header-status">
-            <span className="status-dot" aria-hidden="true" />
-            {dataset
-              ? dataset.metadata.mode === 'demo'
-                ? 'Synthetic demo'
-                : dataset.metadata.mode === 'import'
-                  ? 'Imported CSV'
-                  : `${dataset.metadata.provider === 'yahoo-finance' ? 'Yahoo Finance' : dataset.metadata.provider === 'alpha-vantage' ? 'Alpha Vantage' : 'Twelve Data'} · ${dataset.metadata.interval}`
-              : 'No data loaded'}
-            <span className="badge">
-              {dataset?.metadata.mode === 'live' ? 'PROVIDER' : 'LOCAL'}
-            </span>
-            {dataset && (
-              <span className="badge">
-                {dataset.candles.at(-1)?.time}
-                {dataset.candles.at(-1)?.incomplete ? ' · Provisional' : ''}
-              </span>
-            )}
-          </div>
-          <div className="header-actions">
-            <div className="theme-control" ref={themeControl}>
-              <button
-                className="settings-button theme-button"
-                aria-expanded={themeOpen}
-                aria-controls="theme-menu"
-                onClick={() => setThemeOpen(!themeOpen)}
-              >
-                <span className="theme-button-icon" aria-hidden="true" />
-                Theme
-              </button>
-              {themeOpen && (
-                <GlassPanel
-                  id="theme-menu"
-                  className="theme-popover"
-                  aria-label="Choose theme"
-                >
-                  <div className="theme-popover-heading">
-                    <div>
-                      <h2>Choose a theme</h2>
-                      <p className="small">{theme.name} · choose your finish</p>
-                    </div>
-                    <button
-                      aria-label="Close theme picker"
-                      onClick={() => {
-                        setThemeOpen(false);
-                        themeControl.current
-                          ?.querySelector<HTMLButtonElement>('button')
-                          ?.focus();
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <fieldset className="theme-picker">
-                    <legend>Theme</legend>
-                    {Object.values(themes).map((option) => (
-                      <label className="theme-option" key={option.id}>
-                        <input
-                          type="radio"
-                          name="theme"
-                          value={option.id}
-                          checked={preference.themeId === option.id}
-                          onChange={() => {
-                            const next = { ...preference, themeId: option.id };
-                            setPreference(next);
-                            setPreferenceWarning(
-                              writeThemePreference(next)
-                                ? ''
-                                : 'Browser storage is unavailable. Appearance applies for this session.',
-                            );
-                          }}
-                        />
-                        <span
-                          className="theme-swatch"
-                          aria-hidden="true"
-                          style={{
-                            background: (option.id === theme.id
-                              ? theme
-                              : option
-                            ).css['--surface-opaque'],
-                            borderColor: (option.id === theme.id
-                              ? theme
-                              : option
-                            ).css['--border'],
-                          }}
-                        >
-                          <span
-                            style={{
-                              background: (option.id === theme.id
-                                ? theme
-                                : option
-                              ).css['--accent'],
-                            }}
-                          />
-                        </span>
-                        {option.name}
-                      </label>
-                    ))}
-                  </fieldset>
-                  {theme.id === 'terminal-amber' && (
-                    <TerminalSettings
-                      value={preference.terminal}
-                      onChange={(terminal) => {
-                        const next = { ...preference, terminal };
-                        setPreference(next);
-                        setPreferenceWarning(
-                          writeThemePreference(next)
-                            ? ''
-                            : 'Browser storage is unavailable. Appearance applies for this session.',
-                        );
-                      }}
-                    />
-                  )}
-                </GlassPanel>
-              )}
-            </div>
-            <button
-              className="settings-button"
-              onClick={() => {
+          <nav className="page-tabs" aria-label="Pages">
+            <a
+              href="#"
+              aria-current={page === 'workspace' ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
                 showPage('workspace');
-                openProvider();
               }}
             >
-              Data connection
-            </button>
-            <button
-              className="settings-button"
-              aria-expanded={settingsOpen}
-              aria-controls="appearance-settings"
-              onClick={() => {
-                setThemeOpen(false);
-                setSettingsOpen(!settingsOpen);
+              Chart
+            </a>
+            <a
+              href="#correlation"
+              aria-current={page === 'correlation' ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                showPage('correlation');
               }}
             >
-              Settings <span aria-hidden="true">⚙</span>
-            </button>
+              Correlation
+            </a>
+          </nav>
+          <div className="header-actions">
             <button
-              className="settings-button"
-              aria-pressed={page === 'correlation'}
-              onClick={() =>
-                showPage(page === 'correlation' ? 'workspace' : 'correlation')
-              }
+              ref={pillRef}
+              className={`source-pill ${source.tone}${source.symbol ? ' has-symbol' : ''}`}
+              aria-label={`Data source: ${source.name}${source.symbol ? ` · ${source.symbol}` : ''}`}
+              aria-expanded={providerOpen}
+              aria-controls="data-source"
+              onClick={() => (providerOpen ? closeProvider() : openProvider())}
             >
-              Correlation heatmap
+              <span className="status-dot" aria-hidden="true" />
+              <span className="source-name">{source.name}</span>
+              {source.symbol && (
+                <>
+                  <span className="source-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <strong>{source.symbol}</strong>
+                </>
+              )}
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
             </button>
-            <TypographyPicker value={typography} onChange={setTypography} />
+            <SettingsMenu
+              theme={theme}
+              preference={preference}
+              onPreference={updatePreference}
+              typography={typography}
+              onTypography={setTypography}
+              working={working}
+              onResetPreferences={resetSavedPreferences}
+              onClearCache={clearCache}
+            />
           </div>
         </header>
-        {settingsOpen && (
-          <GlassPanel
-            id="appearance-settings"
-            className="settings-panel"
-            aria-label="Appearance and storage settings"
-          >
-            <div>
-              <h2>Appearance</h2>
-              <p>{theme.name} · calm surfaces, clear charts</p>
-            </div>
-
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={preference.reducedEffects}
-                onChange={(event) => {
-                  const next = {
-                    ...preference,
-                    reducedEffects: event.target.checked,
-                  };
-                  setPreference(next);
-                  setPreferenceWarning(
-                    writeThemePreference(next)
-                      ? ''
-                      : 'Browser storage is unavailable. Appearance applies for this session.',
-                  );
-                }}
-              />{' '}
-              Reduce visual effects
-            </label>
-            <div className="storage-controls">
-              <div>
-                <h2>Local storage</h2>
-                <p className="small">
-                  Clear Cache removes all saved demo/import datasets and recent
-                  listings plus the provider session cache. Saved keys are
-                  retained. Reset Preferences resets appearance, chart view,
-                  panel layout and parameters. Watchlist and credentials are
-                  retained.
-                </p>
-              </div>
-              <button
-                disabled={working}
-                onClick={() =>
-                  void libraryAction(
-                    () => {
-                      live.clearCache();
-                      return store.clear();
+        <ProviderPanel
+          key={live.provider.id}
+          open={providerOpen}
+          session={live}
+          saved={connection.saved}
+          activeDataset={dataset}
+          warmupBars={warmupBars}
+          nativeWarmupBars={nativeWarmupBars}
+          onIntent={() => {
+            const token = ++generation.current;
+            setWorking(false);
+            return token;
+          }}
+          onConnectionChanged={connectionChanged}
+          onClose={closeProvider}
+          onProvider={switchProvider}
+          onDataset={(item, token) => {
+            if (token !== generation.current) return;
+            setState({ status: 'ready', dataset: item });
+            setImportOpen(false);
+            showPage('workspace');
+            void store.select(null).then(() => setLibrary(store.snapshot()));
+          }}
+          onRefreshFailure={(token) => {
+            if (token !== generation.current) return;
+            setState((previous) =>
+              previous.status === 'ready' &&
+              previous.dataset.metadata.mode === 'live'
+                ? {
+                    status: 'ready',
+                    dataset: {
+                      ...previous.dataset,
+                      metadata: {
+                        ...previous.dataset.metadata,
+                        freshness: 'stale',
+                      },
                     },
-                    () => {
-                      setState({ status: 'initial' });
-                      setImportOpen(false);
-                      setNotice(
-                        'Dataset caches and recent listings cleared. Appearance, chart view and saved key preferences retained.',
-                      );
-                    },
-                  )
-                }
-              >
-                Clear Cache
-              </button>
-              <button onClick={resetSavedPreferences}>Reset Preferences</button>
-            </div>
-          </GlassPanel>
-        )}
+                  }
+                : previous,
+            );
+          }}
+        />
         <main id="workspace" tabIndex={-1}>
           <PwaControls />
           <div className="workspace-heading">
@@ -591,87 +524,7 @@ export function App({
                 onCancel={() => setImportOpen(false)}
               />
             )}
-            {providerOpen && (
-              <label className="provider-selector">
-                Market data provider
-                <select
-                  aria-label="Market data provider"
-                  value={live.provider.id}
-                  onChange={(event) => {
-                    live.disconnect();
-                    connectionChanged();
-                    const selectedProvider =
-                      event.target.value === 'yahoo-finance'
-                        ? new YahooFinanceProvider()
-                        : event.target.value === 'alpha-vantage'
-                          ? new AlphaVantageProvider()
-                          : new TwelveDataProvider();
-                    const saved = readCredential(selectedProvider.id);
-                    setConnection({
-                      saved,
-                      session: new LiveSession(
-                        selectedProvider,
-                        saved.credential,
-                      ),
-                    });
-                  }}
-                >
-                  <option value="twelve-data">Twelve Data</option>
-                  <option value="alpha-vantage">Alpha Vantage</option>
-                  <option value="yahoo-finance">
-                    Yahoo Finance · NSE India
-                  </option>
-                </select>
-                <span className="small">
-                  Switching clears the old session, requests and loaded provider
-                  data. Remembered keys stay separate; memory-only keys must be
-                  entered again. No automatic fallback.
-                </span>
-              </label>
-            )}
-            <ProviderPanel
-              key={live.provider.id}
-              open={providerOpen}
-              session={live}
-              saved={connection.saved}
-              activeDataset={dataset}
-              warmupBars={warmupBars}
-              nativeWarmupBars={nativeWarmupBars}
-              onIntent={() => {
-                const token = ++generation.current;
-                setWorking(false);
-                return token;
-              }}
-              onConnectionChanged={connectionChanged}
-              onClose={() => setProviderOpen(false)}
-              onDataset={(item, token) => {
-                if (token !== generation.current) return;
-                setState({ status: 'ready', dataset: item });
-                setImportOpen(false);
-                void store
-                  .select(null)
-                  .then(() => setLibrary(store.snapshot()));
-              }}
-              onRefreshFailure={(token) => {
-                if (token !== generation.current) return;
-                setState((previous) =>
-                  previous.status === 'ready' &&
-                  previous.dataset.metadata.mode === 'live'
-                    ? {
-                        status: 'ready',
-                        dataset: {
-                          ...previous.dataset,
-                          metadata: {
-                            ...previous.dataset.metadata,
-                            freshness: 'stale',
-                          },
-                        },
-                      }
-                    : previous,
-                );
-              }}
-            />
-            {state.status === 'initial' && !importOpen && !providerOpen && (
+            {state.status === 'initial' && !importOpen && (
               <Landing
                 onDemo={() => void tryDemo()}
                 onImport={openImport}
