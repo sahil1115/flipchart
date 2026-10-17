@@ -15,8 +15,18 @@ import type { SavedCredential } from '../../storage/provider-credential';
 const providerOptions = [
   { id: 'twelve-data', label: 'Twelve Data' },
   { id: 'alpha-vantage', label: 'Alpha Vantage' },
-  { id: 'yahoo-finance', label: 'Yahoo · NSE' },
+  { id: 'yahoo-finance', label: 'Yahoo Finance' },
 ] as const;
+const yahooCountries = {
+  india: {
+    label: 'India (NSE)',
+    placeholder: 'Company or NSE symbol, e.g. Reliance',
+  },
+  us: {
+    label: 'United States (NASDAQ · NYSE)',
+    placeholder: 'Company or ticker, e.g. Apple or AAPL',
+  },
+} as const;
 const listingLabel = (listing: Listing) =>
   `${listing.symbol} · ${listing.exchange ?? listing.mic ?? listing.region ?? 'Exchange unavailable'}`;
 function Check() {
@@ -92,6 +102,7 @@ export function ProviderPanel({
     [results, setResults] = useState<Listing[]>([]),
     [selected, setSelected] = useState<Listing | null>(null);
   const [searchCollapsed, setSearchCollapsed] = useState(false);
+  const [market, setMarket] = useState<keyof typeof yahooCountries>('india');
   const [searchStatus, setSearchStatus] = useState(''),
     [searchError, setSearchError] = useState(''),
     [error, setError] = useState('');
@@ -120,20 +131,18 @@ export function ProviderPanel({
       return;
     const generation = ++searchGeneration.current;
     const timer = setTimeout(() => {
-      setSearchStatus(
-        yahoo ? 'Preparing NSE symbol…' : `Searching ${providerName}…`,
-      );
+      setSearchStatus(`Searching ${providerName}…`);
       void session
-        .search(query)
+        .search(query, yahoo ? { market } : undefined)
         .then((matches) => {
           if (generation !== searchGeneration.current) return;
           setResults(matches);
           setSearchStatus(
-            yahoo
-              ? 'NSE symbol candidate. Select it, then Load history to verify availability.'
-              : matches.length
-                ? `${matches.length} stock/ETF matches. Select the exchange you need.`
-                : 'No supported stock/ETF matches. Try another symbol or company name.',
+            matches.length
+              ? yahoo
+                ? `${matches.length} stock/ETF matches. Select one, then Load history to verify availability.`
+                : `${matches.length} stock/ETF matches. Select the exchange you need.`
+              : 'No supported stock/ETF matches. Try another symbol or company name.',
           );
         })
         .catch((error) => {
@@ -151,7 +160,16 @@ export function ProviderPanel({
       searchGeneration.current = generation + 1;
       session.cancelSearch();
     };
-  }, [open, connected, query, session, providerName, yahoo, searchCollapsed]);
+  }, [
+    open,
+    connected,
+    query,
+    session,
+    providerName,
+    yahoo,
+    market,
+    searchCollapsed,
+  ]);
   useEffect(() => {
     if (!open) return;
     const shortcut = (event: KeyboardEvent) => {
@@ -394,7 +412,7 @@ export function ProviderPanel({
             </div>
             <p className="small step-note">
               {yahoo
-                ? 'NSE India · no API key · unofficial Yahoo Finance history for personal use.'
+                ? 'India and US stocks · no API key · unofficial Yahoo Finance history for personal use.'
                 : `Your own ${providerName} account and its data rights. Switching clears this session.`}
             </p>
           </section>
@@ -552,6 +570,30 @@ export function ProviderPanel({
               </span>
               Find a stock
             </h3>
+            {yahoo && (
+              <select
+                className="market-select"
+                aria-label="Country"
+                value={market}
+                onChange={(event) => {
+                  if (busy) cancel();
+                  setMarket(event.target.value as keyof typeof yahooCountries);
+                  setSearchCollapsed(false);
+                  setResults([]);
+                  setSelected(null);
+                  setSearchStatus('');
+                  setSearchError('');
+                  setError('');
+                  searchInput.current?.focus();
+                }}
+              >
+                {Object.entries(yahooCountries).map(([id, country]) => (
+                  <option key={id} value={id}>
+                    {country.label}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="field-with-icon search-field">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="11" cy="11" r="7" />
@@ -559,12 +601,10 @@ export function ProviderPanel({
               </svg>
               <input
                 ref={searchInput}
-                aria-label={
-                  yahoo ? 'NSE trading symbol' : 'Search symbol or company'
-                }
+                aria-label="Search symbol or company"
                 placeholder={
                   yahoo
-                    ? 'NSE symbol, e.g. RELIANCE'
+                    ? yahooCountries[market].placeholder
                     : 'Search symbol or company'
                 }
                 maxLength={80}
@@ -802,12 +842,14 @@ export function ProviderPanel({
             <div className="details-body small">
               {yahoo ? (
                 <p>
-                  Enter an NSE trading symbol, such as RELIANCE, TCS, or INFY;
-                  .NS is added automatically. Company-name lookup is not
-                  supported. Yahoo requests use the local app connection
-                  included in npm run dev and npm run preview. Static hosting
-                  alone does not include this connection. A symbol candidate is
-                  not proof of available Yahoo history; Load history checks it.
+                  Choose a country, then search by company name or ticker, such
+                  as Reliance or TCS for India and Apple or AAPL for the US
+                  (NASDAQ, NYSE and other US exchanges, including Dow and
+                  S&amp;P 500 members). Yahoo requests use the local app
+                  connection included in npm run dev and npm run preview. Static
+                  hosting alone does not include this connection. A search
+                  result is not proof of available Yahoo history; Load history
+                  checks it. Index symbols such as ^GSPC are not supported.
                 </p>
               ) : (
                 <>

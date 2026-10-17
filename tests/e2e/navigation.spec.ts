@@ -133,12 +133,15 @@ test('a successful provider load closes the drawer to reveal the chart', async (
       },
     });
   });
+  await page.route('**/api/yahoo/search?*', (route) =>
+    route.fulfill({ json: { quotes: [] } }),
+  );
   await page.goto('/');
   const pill = page.getByRole('button', { name: /^Data source/ });
   await pill.click();
-  await page.getByRole('radio', { name: 'Yahoo · NSE' }).check();
+  await page.getByRole('radio', { name: 'Yahoo Finance' }).check();
   const drawer = page.getByRole('dialog', { name: 'Data source' });
-  await drawer.getByLabel('NSE trading symbol').fill('fixture');
+  await drawer.getByLabel('Search symbol or company').fill('fixture');
   await drawer.getByRole('button', { name: /^FIXTURE.NS · NSE/ }).click();
   await drawer.getByRole('button', { name: 'Load history' }).click();
   await expect(drawer).toBeHidden();

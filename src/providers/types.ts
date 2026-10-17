@@ -44,12 +44,17 @@ export interface HistoryRequest {
   to: TradingDate;
   accessProfile: AccessProfile;
 }
+/** Provider-specific search scope, such as Yahoo's country. */
+export interface SearchOptions {
+  market?: string;
+}
 export interface MarketDataProvider {
   readonly id: string;
   searchSymbol(
     query: string,
     credential: string,
     abortSignal: AbortSignal,
+    options?: SearchOptions,
   ): Promise<Listing[]>;
   getCapabilities(
     listing: Listing,

@@ -1,7 +1,7 @@
 import { requireOnline } from '../pwa/network';
 import { QueryClient, isCancelledError } from '@tanstack/react-query';
 import type { Dataset, Listing, TradingDate } from '../data/types';
-import type { HistoryRequest, AccessProfile } from './types';
+import type { HistoryRequest, AccessProfile, SearchOptions } from './types';
 import { ProviderError } from './types';
 import type { ConnectedProvider } from './twelve-data';
 import {
@@ -132,7 +132,7 @@ export class LiveSession {
     this.credential = '';
     this.profile = { sessionId: crypto.randomUUID(), plan: null };
   }
-  async search(query: string) {
+  async search(query: string, options?: SearchOptions) {
     requireOnline();
     this.cancelSearch();
     const controller = new AbortController();
@@ -142,6 +142,7 @@ export class LiveSession {
       query,
       this.credential,
       controller.signal,
+      options,
     );
     if (controller.signal.aborted || epoch !== this.epoch)
       throw new ProviderError(

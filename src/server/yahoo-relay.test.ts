@@ -173,3 +173,50 @@ it('aborts the upstream request when the browser cancels', async () => {
   await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   await expect.poll(() => aborted).toBe(true);
 });
+
+it('relays name search to the fixed Yahoo search endpoint and rejects unsafe queries', async () => {
+  const fetcher = vi.fn<typeof fetch>(async () =>
+    Response.json({ quotes: [] }),
+  );
+  const origin = await relay(fetcher, '/flipchart/');
+  const result = await fetch(
+    `${origin}/flipchart/api/yahoo/search?q=${encodeURIComponent("Levi's & Co")}`,
+    { headers: { Origin: origin } },
+  );
+  expect(result.status).toBe(200);
+  expect(result.headers.get('cache-control')).toBe('no-store');
+  const url = new URL(String(fetcher.mock.calls[0]![0]));
+  expect(url.origin + url.pathname).toBe(
+    'https://query1.finance.yahoo.com/v1/finance/search',
+  );
+  expect(url.searchParams.get('q')).toBe("Levi's & Co");
+  expect(url.searchParams.get('newsCount')).toBe('0');
+  expect(url.searchParams.get('quotesCount')).toBe('20');
+  for (const params of [
+    'q=',
+    'q=%20',
+    `q=${'a'.repeat(41)}`,
+    'q=a%2Fb',
+    'q=a%0Ab',
+    'q=apple&url=https://other.example/',
+    'symbol=AAPL',
+  ])
+    expect(
+      (await fetch(`${origin}/flipchart/api/yahoo/search?${params}`)).status,
+    ).toBe(400);
+  expect(
+    (
+      await fetch(`${origin}/flipchart/api/yahoo/search?q=apple`, {
+        headers: { Origin: 'https://evil.example' },
+      })
+    ).status,
+  ).toBe(403);
+  expect(
+    (
+      await fetch(`${origin}/flipchart/api/yahoo/search?q=apple`, {
+        method: 'POST',
+      })
+    ).status,
+  ).toBe(405);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});

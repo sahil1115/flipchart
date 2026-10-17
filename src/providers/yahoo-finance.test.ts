@@ -1,5 +1,9 @@
 import { expect, it, vi } from 'vitest';
-import { YahooFinanceProvider, yahooNseListing } from './yahoo-finance';
+import {
+  YahooFinanceProvider,
+  yahooListing,
+  yahooNseListing,
+} from './yahoo-finance';
 import type { HistoryRequest } from './types';
 import { LiveSession } from './live-session';
 import { yahooHistory } from '../../tests/fixtures/yahoo-finance';
@@ -24,10 +28,49 @@ function provider(payload: unknown, status = 200) {
   };
 }
 
-it('accepts NSE symbols including ampersands without fetching during selection', async () => {
-  const { api, fetcher } = provider(yahooHistory());
+const searchPayload = {
+  quotes: [
+    {
+      exchange: 'NMS',
+      quoteType: 'EQUITY',
+      symbol: 'AAPL',
+      longname: 'Apple Inc.',
+      shortname: 'Apple Inc.',
+    },
+    {
+      exchange: 'NYQ',
+      quoteType: 'EQUITY',
+      symbol: 'BRK-B',
+      shortname: 'Berkshire',
+    },
+    {
+      exchange: 'PCX',
+      quoteType: 'ETF',
+      symbol: 'SPY',
+      longname: 'SPDR S&P 500',
+    },
+    { exchange: 'CME', quoteType: 'FUTURE', symbol: 'STSLA=F' },
+    { exchange: 'NMS', quoteType: 'OPTION', symbol: 'AAPL250117C00100000' },
+    {
+      exchange: 'NSI',
+      quoteType: 'EQUITY',
+      symbol: 'RELIANCE.NS',
+      longname: 'Reliance Industries Limited',
+    },
+    { exchange: 'BSE', quoteType: 'EQUITY', symbol: 'RELIANCE.BO' },
+    null,
+  ],
+};
+
+it('builds validated listings for NSE and US symbols', () => {
   expect(yahooNseListing('m&m.ns').symbol).toBe('M&M.NS');
   expect(yahooNseListing(' bajaj-auto ').symbol).toBe('BAJAJ-AUTO.NS');
+  expect(yahooListing('brk.b', 'us')).toMatchObject({
+    id: 'live:yahoo-finance:BRK-B',
+    symbol: 'BRK-B',
+    currency: 'USD',
+    timezone: 'America/New_York',
+  });
   for (const value of [
     'AAPL.BO',
     'Reliance Industries',
@@ -36,10 +79,128 @@ it('accepts NSE symbols including ampersands without fetching during selection',
     '../secret',
   ])
     expect(() => yahooNseListing(value)).toThrow();
-  expect(await api.searchSymbol('fixture', '', signal())).toEqual([
+  for (const value of ['^GSPC', 'Apple Inc', 'TOOLONGTICKER1', '1ABC'])
+    expect(() => yahooListing(value, 'us')).toThrow();
+});
+
+it('searches by name or symbol and keeps only stocks and ETFs on the chosen market', async () => {
+  const { api, fetcher } = provider(searchPayload);
+  const us = await api.searchSymbol('apple', '', signal(), { market: 'us' });
+  expect(us.map((listing) => listing.symbol)).toEqual(['AAPL', 'BRK-B', 'SPY']);
+  expect(us[0]).toMatchObject({
+    name: 'Apple Inc.',
+    exchange: 'NASDAQ',
+    mic: 'XNAS',
+    currency: 'USD',
+  });
+  expect(us[2]).toMatchObject({ exchange: 'NYSE Arca', mic: 'ARCX' });
+  const india = await api.searchSymbol('reliance', '', signal(), {
+    market: 'india',
+  });
+  expect(india).toEqual([
+    expect.objectContaining({
+      symbol: 'RELIANCE.NS',
+      name: 'Reliance Industries Limited',
+      exchange: 'NSE',
+      currency: 'INR',
+    }),
+  ]);
+  expect(String(fetcher.mock.calls[0]![0])).toBe(
+    '/flipchart/api/yahoo/search?q=apple',
+  );
+  expect(fetcher.mock.calls[0]![1]).toMatchObject({
+    cache: 'no-store',
+    credentials: 'omit',
+  });
+  // India is the default market.
+  expect(
+    (await api.searchSymbol('reliance', '', signal())).map((l) => l.symbol),
+  ).toEqual(['RELIANCE.NS']);
+});
+
+it('falls back to the typed symbol when search is empty or unavailable, but not for names', async () => {
+  const empty = provider({ quotes: [] }).api;
+  expect(await empty.searchSymbol('fixture', '', signal())).toEqual([
     request.listing,
   ]);
-  expect(fetcher).not.toHaveBeenCalled();
+  expect(
+    await empty.searchSymbol('fixture', '', signal(), { market: 'us' }),
+  ).toEqual([yahooListing('FIXTURE', 'us')]);
+  expect(await empty.searchSymbol('no such company', '', signal())).toEqual([]);
+  const down = provider({}, 502).api;
+  expect(await down.searchSymbol('tcs', '', signal())).toEqual([
+    yahooListing('TCS', 'india'),
+  ]);
+  await expect(
+    down.searchSymbol('Tata Consultancy', '', signal()),
+  ).rejects.toMatchObject({ category: 'unsupported-endpoint' });
+  const malformed = provider({ quotes: 'nope' }).api;
+  await expect(
+    malformed.searchSymbol('Tata Consultancy', '', signal()),
+  ).rejects.toMatchObject({ category: 'malformed-response' });
+  const limited = provider({}, 429).api;
+  await expect(
+    limited.searchSymbol('Tata Consultancy', '', signal()),
+  ).rejects.toMatchObject({ category: 'quota-exhausted' });
+  const controller = new AbortController();
+  controller.abort();
+  await expect(
+    empty.searchSymbol('fixture', '', controller.signal),
+  ).rejects.toMatchObject({ category: 'cancelled' });
+});
+
+it('loads US history with USD, New York dates and exchange-code validation', async () => {
+  const us = (mutate?: (meta: Record<string, unknown>) => void) => {
+    const payload = yahooHistory(3);
+    const result = payload.chart.result[0]!;
+    Object.assign(result.meta, {
+      symbol: 'AAPL',
+      currency: 'USD',
+      exchangeName: 'NMS',
+      exchangeTimezoneName: 'America/New_York',
+      longName: 'Apple Inc.',
+    });
+    mutate?.(result.meta);
+    result.timestamp = result.timestamp.map(
+      (_, index) => Date.UTC(2025, 0, 2 + index, 15) / 1000,
+    );
+    return payload;
+  };
+  const usRequest: HistoryRequest = {
+    ...request,
+    listing: yahooListing('AAPL', 'us'),
+  };
+  const data = await provider(us()).api.getOHLCV(usRequest, '', signal());
+  expect(data.candles.map((bar) => bar.time)).toEqual([
+    '2025-01-02',
+    '2025-01-03',
+    '2025-01-04',
+  ]);
+  expect(data.metadata.listing).toMatchObject({
+    symbol: 'AAPL',
+    currency: 'USD',
+    timezone: 'America/New_York',
+    name: 'Apple Inc.',
+  });
+  const mismatches: ((meta: Record<string, unknown>) => void)[] = [
+    (meta) => (meta.currency = 'INR'),
+    (meta) => (meta.exchangeName = 'NSI'),
+    (meta) => (meta.exchangeName = 'SNP'),
+    (meta) => (meta.exchangeTimezoneName = 'Asia/Kolkata'),
+    (meta) => (meta.instrumentType = 'INDEX'),
+  ];
+  for (const mutate of mismatches)
+    await expect(
+      provider(us(mutate)).api.getOHLCV(usRequest, '', signal()),
+    ).rejects.toMatchObject({ category: 'malformed-response' });
+  // A listing whose currency or zone disagrees with its market is refused up front.
+  await expect(
+    provider(us()).api.getOHLCV(
+      { ...usRequest, listing: { ...usRequest.listing, currency: 'INR' } },
+      '',
+      signal(),
+    ),
+  ).rejects.toMatchObject({ category: 'unsupported-listing' });
 });
 
 it('loads a keyless session through the base-aware relay and preserves provider OHLC and zero volume', async () => {

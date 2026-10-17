@@ -5,6 +5,8 @@ const maxBytes = 3 * 1024 * 1024;
 /** NSE symbols end in .NS; US tickers are bare (Yahoo uses '-' for class shares, e.g. BRK-B). */
 export const relaySymbolPattern =
   /^(?:[A-Z0-9][A-Z0-9&_-]{0,39}\.NS|[A-Z][A-Z0-9-]{0,9})$/;
+/** Company names or tickers: letters, digits, spaces and a few name punctuation marks. */
+export const relayQueryPattern = /^[\p{L}\p{N}][\p{L}\p{N} .&'-]{0,39}$/u;
 const requestsPerMinute = 30;
 
 /** A loopback-only, same-origin route to one fixed public data endpoint. */
@@ -12,12 +14,18 @@ export function createYahooRelay(
   base = '/',
   fetcher: typeof fetch = fetch,
 ): Connect.NextHandleFunction {
-  const path = `${base.replace(/\/$/, '')}/api/yahoo/history`;
+  const prefix = `${base.replace(/\/$/, '')}/api/yahoo`;
   let active = 0;
   let recent: number[] = [];
   return (req, res, next) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
-    if (url.pathname !== path) return next();
+    const route =
+      url.pathname === `${prefix}/history`
+        ? 'history'
+        : url.pathname === `${prefix}/search`
+          ? 'search'
+          : null;
+    if (!route) return next();
     const reply = (status: number, category: string, message: string) => {
       res.writeHead(status, {
         'Content-Type': 'application/json',
@@ -48,27 +56,64 @@ export function createYahooRelay(
       return reply(
         405,
         'unsupported-endpoint',
-        'Only history GET requests are supported.',
+        'Only GET requests are supported.',
       );
-    const symbol = url.searchParams.get('symbol') ?? '';
-    const from = url.searchParams.get('from');
-    const to = url.searchParams.get('to');
-    if (
-      !relaySymbolPattern.test(symbol) ||
-      !isTradingDate(from) ||
-      !isTradingDate(to) ||
-      from > to ||
-      Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`) >
-        30 * 366 * 86400_000 ||
-      [...url.searchParams.keys()].some(
-        (key) => !['symbol', 'from', 'to'].includes(key),
+    let upstream: URL;
+    let notFound: string;
+    if (route === 'search') {
+      const text = (url.searchParams.get('q') ?? '').trim();
+      if (
+        !relayQueryPattern.test(text) ||
+        [...url.searchParams.keys()].some((key) => key !== 'q')
       )
-    )
-      return reply(
-        400,
-        'unsupported-listing',
-        'Use an NSE symbol ending in .NS or a US ticker, and an ordered date range of at most 30 years.',
+        return reply(
+          400,
+          'unsupported-listing',
+          'Search with a company name or ticker of at most 40 letters, digits and spaces.',
+        );
+      upstream = new URL('https://query1.finance.yahoo.com/v1/finance/search');
+      upstream.searchParams.set('q', text);
+      upstream.searchParams.set('quotesCount', '20');
+      upstream.searchParams.set('newsCount', '0');
+      upstream.searchParams.set('listsCount', '0');
+      notFound = 'Yahoo did not find matching stocks.';
+    } else {
+      const symbol = url.searchParams.get('symbol') ?? '';
+      const from = url.searchParams.get('from');
+      const to = url.searchParams.get('to');
+      if (
+        !relaySymbolPattern.test(symbol) ||
+        !isTradingDate(from) ||
+        !isTradingDate(to) ||
+        from > to ||
+        Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`) >
+          30 * 366 * 86400_000 ||
+        [...url.searchParams.keys()].some(
+          (key) => !['symbol', 'from', 'to'].includes(key),
+        )
+      )
+        return reply(
+          400,
+          'unsupported-listing',
+          'Use an NSE symbol ending in .NS or a US ticker, and an ordered date range of at most 30 years.',
+        );
+      upstream = new URL(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,
       );
+      upstream.searchParams.set('interval', '1d');
+      // Exchange-local midnight: IST for NSE, US Eastern standard time for US
+      // listings (sessions open at 09:30, so the DST hour never moves a bar).
+      const offset = symbol.endsWith('.NS') ? '+05:30' : '-05:00';
+      upstream.searchParams.set(
+        'period1',
+        String(Date.parse(`${from}T00:00:00${offset}`) / 1000),
+      );
+      upstream.searchParams.set(
+        'period2',
+        String(Date.parse(`${to}T00:00:00${offset}`) / 1000 + 86400),
+      );
+      notFound = 'Yahoo did not find history for this symbol.';
+    }
     recent = recent.filter((time) => Date.now() - time < 60_000);
     if (active >= 2 || recent.length >= requestsPerMinute)
       return reply(
@@ -83,21 +128,6 @@ export function createYahooRelay(
       if (!res.writableEnded) controller.abort();
     };
     res.on('close', cancel);
-    const upstream = new URL(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`,
-    );
-    upstream.searchParams.set('interval', '1d');
-    // Exchange-local midnight: IST for NSE, US Eastern standard time for US
-    // listings (sessions open at 09:30, so the DST hour never moves a bar).
-    const offset = symbol.endsWith('.NS') ? '+05:30' : '-05:00';
-    upstream.searchParams.set(
-      'period1',
-      String(Date.parse(`${from}T00:00:00${offset}`) / 1000),
-    );
-    upstream.searchParams.set(
-      'period2',
-      String(Date.parse(`${to}T00:00:00${offset}`) / 1000 + 86400),
-    );
     void (async () => {
       try {
         const response = await fetcher(upstream, {
@@ -122,15 +152,11 @@ export function createYahooRelay(
               'Yahoo rejected this request. Its unofficial endpoint may be unavailable; try a CSV import.',
             );
           if (response.status === 404)
-            return reply(
-              404,
-              'unsupported-listing',
-              'Yahoo did not find history for this NSE symbol.',
-            );
+            return reply(404, 'unsupported-listing', notFound);
           return reply(
             502,
             'provider-outage',
-            'Yahoo history is temporarily unavailable.',
+            'Yahoo is temporarily unavailable.',
           );
         }
         const reader = response.body?.getReader();
@@ -160,7 +186,7 @@ export function createYahooRelay(
           reply(
             502,
             'provider-outage',
-            'Could not retrieve Yahoo history. Check your internet connection and try again manually.',
+            'Could not retrieve Yahoo data. Check your internet connection and try again manually.',
           );
       } finally {
         active--;

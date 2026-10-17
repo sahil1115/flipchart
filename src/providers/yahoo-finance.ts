@@ -1,27 +1,120 @@
 import { isTradingDate, normalizeCandles } from '../data/normalize';
 import { object, validateDataset, validateListing } from '../data/validate';
 import type { Candle, Dataset, Listing } from '../data/types';
-import type { HistoryRequest, ProviderCapabilities } from './types';
+import type {
+  HistoryRequest,
+  ProviderCapabilities,
+  SearchOptions,
+} from './types';
 import { ProviderError } from './types';
 import { exchangeDate } from './twelve-data';
 import type { ConnectedProvider, ConnectionReport } from './twelve-data';
 
-export function yahooNseListing(query: string): Listing {
-  const symbol = `${query.trim().toUpperCase().replace(/\.NS$/, '')}.NS`;
-  if (!/^[A-Z0-9][A-Z0-9&_-]{0,39}\.NS$/.test(symbol))
+export type YahooMarket = 'india' | 'us';
+interface MarketConfig {
+  currency: string;
+  timezone: string;
+  /** Yahoo `exchange` codes accepted for this market. */
+  exchanges: Record<string, { exchange: string; mic: string | null }>;
+}
+export const yahooMarkets: Record<YahooMarket, MarketConfig> = {
+  india: {
+    currency: 'INR',
+    timezone: 'Asia/Kolkata',
+    exchanges: {
+      NSI: { exchange: 'NSE', mic: 'XNSE' },
+      NSE: { exchange: 'NSE', mic: 'XNSE' },
+    },
+  },
+  us: {
+    currency: 'USD',
+    timezone: 'America/New_York',
+    exchanges: {
+      NMS: { exchange: 'NASDAQ', mic: 'XNAS' },
+      NGM: { exchange: 'NASDAQ', mic: 'XNAS' },
+      NCM: { exchange: 'NASDAQ', mic: 'XNAS' },
+      NYQ: { exchange: 'NYSE', mic: 'XNYS' },
+      ASE: { exchange: 'NYSE American', mic: 'XASE' },
+      PCX: { exchange: 'NYSE Arca', mic: 'ARCX' },
+      BTS: { exchange: 'Cboe BZX', mic: 'BATS' },
+    },
+  },
+};
+const usTicker = /^[A-Z][A-Z0-9-]{0,9}$/;
+export const yahooMarketOf = (symbol: string): YahooMarket =>
+  symbol.endsWith('.NS') ? 'india' : 'us';
+
+/** A listing built from a typed symbol; Yahoo confirms it when history loads. */
+export function yahooListing(query: string, market: YahooMarket): Listing {
+  const config = yahooMarkets[market];
+  const text = query.trim().toUpperCase();
+  const symbol =
+    market === 'india'
+      ? `${text.replace(/\.NS$/, '')}.NS`
+      : text.replace(/\./g, '-');
+  if (
+    market === 'india'
+      ? !/^[A-Z0-9][A-Z0-9&_-]{0,39}\.NS$/.test(symbol)
+      : !usTicker.test(symbol)
+  )
     throw new ProviderError(
       'unsupported-listing',
-      'Enter an NSE trading symbol, such as RELIANCE.NS, TCS.NS, or M&M.NS. Company-name search is not supported.',
+      market === 'india'
+        ? 'Enter an NSE trading symbol, such as RELIANCE.NS, TCS.NS, or M&M.NS.'
+        : 'Enter a US ticker, such as AAPL, MSFT, or BRK-B.',
     );
   return {
     id: `live:yahoo-finance:${symbol}`,
     symbol,
     name: null,
-    exchange: 'NSE',
-    mic: 'XNSE',
-    currency: 'INR',
-    timezone: 'Asia/Kolkata',
+    exchange: market === 'india' ? 'NSE' : 'US',
+    mic: market === 'india' ? 'XNSE' : null,
+    currency: config.currency,
+    timezone: config.timezone,
   };
+}
+export const yahooNseListing = (query: string) => yahooListing(query, 'india');
+
+/** Stocks and ETFs on the chosen market from Yahoo's search payload. */
+function searchListings(payload: unknown, market: YahooMarket): Listing[] {
+  const config = yahooMarkets[market];
+  const quotes = object(payload, 'Yahoo search').quotes;
+  if (!Array.isArray(quotes)) throw new Error('Invalid search');
+  const listings: Listing[] = [];
+  for (const item of quotes) {
+    if (typeof item !== 'object' || item === null) continue;
+    const quote = item as Record<string, unknown>;
+    const place =
+      typeof quote.exchange === 'string' &&
+      Object.hasOwn(config.exchanges, quote.exchange)
+        ? config.exchanges[quote.exchange]
+        : undefined;
+    if (
+      !place ||
+      typeof quote.symbol !== 'string' ||
+      !['EQUITY', 'ETF'].includes(String(quote.quoteType)) ||
+      (market === 'india'
+        ? !quote.symbol.endsWith('.NS')
+        : !usTicker.test(quote.symbol))
+    )
+      continue;
+    const name = [quote.longname, quote.shortname].find(
+      (value): value is string => typeof value === 'string' && value !== '',
+    );
+    try {
+      const listing = {
+        ...yahooListing(quote.symbol, market),
+        name: name?.slice(0, 120) ?? null,
+        exchange: place.exchange,
+        mic: place.mic,
+      };
+      if (!listings.some((existing) => existing.id === listing.id))
+        listings.push(listing);
+    } catch {
+      // Skip symbols the app cannot represent.
+    }
+  }
+  return listings.slice(0, 10);
 }
 
 export class YahooFinanceProvider implements ConnectedProvider {
@@ -37,10 +130,68 @@ export class YahooFinanceProvider implements ConnectedProvider {
     query: string,
     _credential: string,
     signal: AbortSignal,
+    options: SearchOptions = {},
   ): Promise<Listing[]> {
-    if (signal.aborted)
-      throw new ProviderError('cancelled', 'The request was cancelled.');
-    return [yahooNseListing(query)];
+    const cancelled = () =>
+      new ProviderError('cancelled', 'The request was cancelled.');
+    if (signal.aborted) throw cancelled();
+    const market: YahooMarket = options.market === 'us' ? 'us' : 'india';
+    const text = query.trim();
+    let typed: Listing | null = null;
+    try {
+      typed = yahooListing(text, market);
+    } catch {
+      // Not a symbol; a name search can still match.
+    }
+    // A typed symbol stays usable when search is unavailable.
+    const fallback = (error: ProviderError) => {
+      if (typed) return [typed];
+      throw error;
+    };
+    let response: Response;
+    try {
+      response = await this.fetcher(
+        `${this.base}api/yahoo/search?${new URLSearchParams({ q: text })}`,
+        { signal, cache: 'no-store', credentials: 'omit' },
+      );
+    } catch {
+      if (signal.aborted) throw cancelled();
+      return fallback(
+        new ProviderError(
+          'network-cors',
+          'Could not reach the local Yahoo relay. Run npm run dev or npm run preview and check your connection.',
+        ),
+      );
+    }
+    if (signal.aborted) throw cancelled();
+    let payload: unknown;
+    try {
+      if (!response.ok) throw new Error('Search unavailable');
+      payload = await response.json();
+    } catch {
+      if (signal.aborted) throw cancelled();
+      return fallback(
+        new ProviderError(
+          response.status === 429 ? 'quota-exhausted' : 'unsupported-endpoint',
+          response.status === 429
+            ? 'Yahoo or the local relay is limiting requests. Try again manually later.'
+            : 'Yahoo search is unavailable. Enter the exact ticker, or import a CSV instead.',
+        ),
+      );
+    }
+    if (signal.aborted) throw cancelled();
+    let matches: Listing[];
+    try {
+      matches = searchListings(payload, market);
+    } catch {
+      return fallback(
+        new ProviderError(
+          'malformed-response',
+          'Yahoo search returned data the app could not validate.',
+        ),
+      );
+    }
+    return matches.length || !typed ? matches : [typed];
   }
   getCapabilities(): ProviderCapabilities {
     return {
@@ -49,7 +200,7 @@ export class YahooFinanceProvider implements ConnectedProvider {
       historyLimit: { maxBars: 5000, earliestDate: null },
       access: 'unknown',
       unavailableFeatures: [
-        'Daily NSE history only; availability is verified when you load.',
+        'Daily history only; availability is verified when you load.',
         'Yahoo OHLC is used as supplied. Corporate-action adjustment is unverified; adjusted close is not mixed with OHLC.',
         'Unofficial personal-use connection; access and accuracy are not guaranteed.',
         'Provider data is session-only. Nothing fetches automatically on reload.',
@@ -81,16 +232,21 @@ export class YahooFinanceProvider implements ConnectedProvider {
         'unsupported-endpoint',
         'Yahoo corporate-action adjustment is unverified.',
       );
-    const listing = yahooNseListing(request.listing.symbol);
+    const market = yahooMarketOf(request.listing.symbol);
+    const config = yahooMarkets[market];
+    const expected = yahooListing(request.listing.symbol, market);
+    const listing = request.listing;
     if (
-      listing.id !== request.listing.id ||
+      expected.id !== listing.id ||
+      expected.currency !== listing.currency ||
+      expected.timezone !== listing.timezone ||
       !isTradingDate(request.from) ||
       !isTradingDate(request.to) ||
       request.from > request.to
     )
       throw new ProviderError(
         'unsupported-listing',
-        'Choose a valid NSE listing and history window.',
+        'Choose a valid Yahoo listing and history window.',
       );
     const query = new URLSearchParams({
       symbol: listing.symbol,
@@ -139,7 +295,7 @@ export class YahooFinanceProvider implements ConnectedProvider {
         'provider-outage';
       const messages = {
         'unsupported-listing':
-          'Yahoo did not return history for this NSE symbol. Check the trading symbol or use a CSV import.',
+          'Yahoo did not return history for this symbol. Check the ticker or use a CSV import.',
         'unsupported-endpoint':
           'Yahoo rejected this request or the local relay is unavailable. Try a CSV import.',
         'quota-exhausted':
@@ -157,7 +313,7 @@ export class YahooFinanceProvider implements ConnectedProvider {
       if (chart.error !== null)
         throw new ProviderError(
           'unsupported-listing',
-          'Yahoo did not find history for this NSE symbol.',
+          'Yahoo did not find history for this symbol.',
         );
       if (!Array.isArray(chart.result) || chart.result.length !== 1)
         throw new Error('Invalid result');
@@ -165,9 +321,9 @@ export class YahooFinanceProvider implements ConnectedProvider {
       const meta = object(result.meta, 'Yahoo metadata');
       if (
         meta.symbol !== listing.symbol ||
-        meta.currency !== 'INR' ||
-        !['NSI', 'NSE'].includes(String(meta.exchangeName)) ||
-        meta.exchangeTimezoneName !== 'Asia/Kolkata' ||
+        meta.currency !== config.currency ||
+        !Object.hasOwn(config.exchanges, String(meta.exchangeName)) ||
+        meta.exchangeTimezoneName !== config.timezone ||
         !['EQUITY', 'ETF'].includes(String(meta.instrumentType)) ||
         meta.dataGranularity !== '1d'
       )
@@ -283,7 +439,7 @@ export class YahooFinanceProvider implements ConnectedProvider {
       if (error instanceof ProviderError) throw error;
       throw new ProviderError(
         'malformed-response',
-        `Yahoo returned NSE history the app could not validate (${error instanceof Error ? error.message : 'invalid response'}). It was not loaded.`,
+        `Yahoo returned history the app could not validate (${error instanceof Error ? error.message : 'invalid response'}). It was not loaded.`,
       );
     }
   }

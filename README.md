@@ -59,7 +59,7 @@ Screenshots use the built-in synthetic demo data.
 3. Enter the key and select **Use key**.
 4. Optionally test the connection, then search for a listing and load its history.
 
-For **Yahoo Finance NSE India**, choose it in **Data connection**, enter an NSE trading symbol such as `RELIANCE`, `TCS`, or `INFY`, select the `.NS` listing, and choose **Load history**. No API key is needed. Daily history is loaded; weekly/monthly views are calculated locally. Company-name lookup is not supported.
+For **Yahoo Finance**, choose it in **Data source**, pick a country (India NSE or United States), then search by company name or ticker, such as `Reliance` or `TCS` for India and `Apple` or `AAPL` for NASDAQ, NYSE and other US exchanges (including Dow and S&P 500 members). Select the match and choose **Load history**. No API key is needed. Daily history is loaded; weekly/monthly views are calculated locally. Index symbols such as `^GSPC` are not supported.
 
 Yahoo uses an unofficial personal-use endpoint through a local relay included in `npm run dev` and `npm run preview`. It may be unavailable or rate limited. Pure static hosting does not include this relay; use CSV imports or another provider there. Yahoo OHLC is used as supplied, with corporate-action adjustment marked unverified. Independently verify data and calculations before making decisions.
 

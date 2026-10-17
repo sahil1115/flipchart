@@ -9,14 +9,14 @@ export function Landing({
   onProvider: () => void;
 }) {
   return (
-    <>
-      <GlassPanel className="welcome-panel">
+    <GlassPanel className="welcome-panel">
+      <div className="welcome-hero">
         <div className="welcome-copy">
           <span className="badge">NO KEY NEEDED</span>
           <h2>Meet your chart workspace.</h2>
           <p>
-            Start with a synthetic dataset or import your own daily CSV. Pan
-            through history, zoom into a session, or switch your view.
+            Start with a synthetic dataset, import your own daily CSV or connect
+            a market-data provider.
           </p>
           <button className="primary" onClick={onDemo}>
             Try Demo <span aria-hidden="true">↗</span>
@@ -43,33 +43,40 @@ export function Landing({
           </svg>
           <span>Illustration · synthetic data</span>
         </div>
-      </GlassPanel>
+      </div>
       <div className="entry-grid">
-        <GlassPanel className="entry-card">
+        <div className="entry-item">
           <span className="entry-icon" aria-hidden="true">
             ↥
           </span>
-          <div>
-            <h2>Bring your own data</h2>
+          <div className="entry-text">
+            <h3>Bring your own data</h3>
             <p>Explore a local OHLCV file.</p>
           </div>
-          <button onClick={onImport}>
-            Import CSV <span aria-hidden="true">→</span>
-          </button>
-        </GlassPanel>
-        <GlassPanel className="entry-card">
+          <div className="entry-action">
+            <button onClick={onImport}>
+              Import CSV <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+        <div className="entry-item">
           <span className="entry-icon" aria-hidden="true">
             ⌁
           </span>
-          <div>
-            <h2>Connect a provider</h2>
-            <p>Connect market data, including NSE India.</p>
+          <div className="entry-text">
+            <h3>Connect a provider</h3>
+            <p>Connect live daily market data.</p>
           </div>
-          <button onClick={onProvider}>
-            Connect Provider <span aria-hidden="true">→</span>
-          </button>
-        </GlassPanel>
+          <div className="entry-action">
+            <button onClick={onProvider}>
+              Connect Provider <span aria-hidden="true">→</span>
+            </button>
+            <p className="small">
+              Twelve Data · free Yahoo Finance for US and India stocks
+            </p>
+          </div>
+        </div>
       </div>
-    </>
+    </GlassPanel>
   );
 }
