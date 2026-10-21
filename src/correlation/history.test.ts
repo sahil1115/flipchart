@@ -59,6 +59,27 @@ it('requests a 75-day window ending on the exchange date through the relay', asy
   expect(fetcher.mock.calls[0]![1]).toMatchObject({ credentials: 'omit' });
 });
 
+it('can request a longer window and caches each window separately', async () => {
+  expect(historyWindow(us, now, 310)).toEqual({
+    from: '2025-12-09',
+    to: '2026-10-15',
+  });
+  const fetcher = respond(chart('SPY', [1, 2, 3]));
+  const options = { fetcher, now };
+  await loadCloses(us, ['SPY'], signal(), undefined, options);
+  await loadCloses(us, ['SPY'], signal(), undefined, {
+    ...options,
+    lookback: 310,
+  });
+  await loadCloses(us, ['SPY'], signal(), undefined, {
+    ...options,
+    lookback: 310,
+  });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  const url = new URL(String(fetcher.mock.calls[1]![0]), 'http://x');
+  expect(url.searchParams.get('from')).toBe('2025-12-09');
+});
+
 it('keeps finalized closes, skips missing sessions and today, and appends the NSE suffix', async () => {
   const result = await fetchCloses(us, 'AAPL', signal(), {
     fetcher: respond(chart('AAPL', [10, null, 12, 13], { endDay: 15 })),

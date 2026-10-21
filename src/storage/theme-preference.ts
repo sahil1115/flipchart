@@ -1,10 +1,14 @@
 import { resolveTheme, terminalAccents } from '../themes/themes';
 import type { TerminalPreference } from '../themes/themes';
+import { heatmapPalettes } from '../correlation/heatmap';
+import type { HeatmapPalette } from '../correlation/heatmap';
 export interface ThemePreference {
   version: 1;
   themeId: string;
   reducedEffects: boolean;
   terminal?: TerminalPreference;
+  /** Correlation heatmap colours; blue/orange when absent. */
+  heatmapPalette?: HeatmapPalette;
 }
 const key = 'flipchart:appearance';
 export function readThemePreference(): ThemePreference {
@@ -33,6 +37,10 @@ export function readThemePreference(): ThemePreference {
       version: 1,
       themeId: resolveTheme(saved.themeId).id,
       reducedEffects: saved.reducedEffects,
+      ...('heatmapPalette' in saved &&
+      heatmapPalettes.includes(saved.heatmapPalette as HeatmapPalette)
+        ? { heatmapPalette: saved.heatmapPalette as HeatmapPalette }
+        : {}),
       ...('terminal' in saved &&
       typeof saved.terminal === 'object' &&
       saved.terminal !== null &&

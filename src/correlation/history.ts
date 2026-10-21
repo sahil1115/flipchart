@@ -14,10 +14,14 @@ export interface CloseSeries {
 /** Calendar lookback that covers 30 trading-day returns across holidays. */
 export const lookbackDays = 75;
 
-export function historyWindow(market: Market, now: Date = new Date()) {
+export function historyWindow(
+  market: Market,
+  now: Date = new Date(),
+  days: number = lookbackDays,
+) {
   const to = exchangeDate(market.timezone, now);
   const from = new Date(`${to}T12:00:00Z`);
-  from.setUTCDate(from.getUTCDate() - lookbackDays);
+  from.setUTCDate(from.getUTCDate() - days);
   return { from: from.toISOString().slice(0, 10) as TradingDate, to };
 }
 
@@ -47,14 +51,17 @@ export async function fetchCloses(
       fetch(input, init),
     base = import.meta.env.BASE_URL,
     now = new Date(),
+    lookback = lookbackDays,
   }: {
     fetcher?: typeof fetch;
     base?: string;
     now?: Date;
+    /** Calendar days of history to request. */
+    lookback?: number;
   } = {},
 ): Promise<CloseSeries> {
   const symbol = `${ticker}${market.suffix}`;
-  const { from, to } = historyWindow(market, now);
+  const { from, to } = historyWindow(market, now, lookback);
   const cancelled = () =>
     new ProviderError('cancelled', 'The request was cancelled.');
   let response: Response;
@@ -77,7 +84,7 @@ export async function fetchCloses(
     if (signal.aborted) throw cancelled();
     throw new ProviderError(
       'unsupported-endpoint',
-      'Correlation data needs the local Yahoo relay provided by npm run dev or npm run preview. Static hosting alone does not include it.',
+      'This page needs the local Yahoo relay provided by npm run dev or npm run preview. Static hosting alone does not include it.',
     );
   }
   if (signal.aborted) throw cancelled();
@@ -184,7 +191,7 @@ export async function loadCloses(
     while (next < tickers.length) {
       const index = next++;
       const ticker = tickers[index]!;
-      const key = `${market.id}:${ticker}:${day}`;
+      const key = `${market.id}:${ticker}:${day}:${options.lookback ?? lookbackDays}`;
       try {
         let series = cache.get(key);
         if (!series) {

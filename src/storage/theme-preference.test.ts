@@ -62,3 +62,25 @@ it('recovers from invalid schemas and denied storage', () => {
     }),
   ).toBe(false);
 });
+
+it('restores a chosen heatmap palette and ignores unknown ones', () => {
+  const preference = {
+    version: 1 as const,
+    themeId: 'glass-light',
+    reducedEffects: false,
+    heatmapPalette: 'green-red' as const,
+  };
+  expect(writeThemePreference(preference)).toBe(true);
+  expect(readThemePreference()).toEqual(preference);
+  for (const heatmapPalette of ['rainbow', 7, null]) {
+    localStorage.setItem(
+      'flipchart:appearance',
+      JSON.stringify({ ...preference, heatmapPalette }),
+    );
+    expect(readThemePreference()).toEqual({
+      version: 1,
+      themeId: 'glass-light',
+      reducedEffects: false,
+    });
+  }
+});

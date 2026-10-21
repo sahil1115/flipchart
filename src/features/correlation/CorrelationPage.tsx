@@ -26,7 +26,12 @@ import {
 import { canvasBlob, drawHeatmap } from '../../correlation/image';
 import { requireOnline } from '../../pwa/network';
 import { ProviderError } from '../../providers/types';
-import { cellColors, formatCorrelation } from '../../correlation/heatmap';
+import {
+  cellColors,
+  formatCorrelation,
+  legendGradient,
+} from '../../correlation/heatmap';
+import type { HeatmapPalette } from '../../correlation/heatmap';
 
 type Loaded = CorrelationResult & {
   market: string;
@@ -48,7 +53,13 @@ const footer = (result: Loaded) =>
     },
   ).format(result.generatedAt)} · For information only, not financial advice`;
 
-export function CorrelationPage({ onBack }: { onBack: () => void }) {
+export function CorrelationPage({
+  onBack,
+  palette = 'blue-orange',
+}: {
+  onBack: () => void;
+  palette?: HeatmapPalette;
+}) {
   const [marketId, setMarketId] = useState<MarketId>('sp500');
   const market = findMarket(marketId);
   const [industryId, setIndustryId] = useState('all');
@@ -160,6 +171,7 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
         footer: footer(loaded),
         symbols: loaded.symbols,
         matrix: loaded.matrix,
+        palette,
       },
       2,
       getComputedStyle(document.body).fontFamily,
@@ -429,7 +441,7 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
                       {row.map((value, j) => (
                         <td
                           key={result.symbols[j]}
-                          style={cellColors(value)}
+                          style={cellColors(value, palette)}
                           title={`${result.symbols[i]} · ${result.symbols[j]}: ${value === null ? 'unavailable (no price movement)' : value.toFixed(4)}`}
                         >
                           {formatCorrelation(value)}
@@ -442,7 +454,10 @@ export function CorrelationPage({ onBack }: { onBack: () => void }) {
             </div>
             <div className="heatmap-legend" aria-hidden="true">
               <span>−1</span>
-              <span className="heatmap-scale" />
+              <span
+                className="heatmap-scale"
+                style={{ background: legendGradient(palette) }}
+              />
               <span>+1</span>
             </div>
             <figcaption className="heatmap-footer">{footer(result)}</figcaption>

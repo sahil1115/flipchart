@@ -39,6 +39,7 @@ import { DatasetWorkspace } from '../features/dashboard/DatasetWorkspace';
 import { Landing } from '../features/dashboard/Landing';
 import { ProviderPanel } from '../features/settings/ProviderPanel';
 import { CorrelationPage } from '../features/correlation/CorrelationPage';
+import { RotationPage } from '../features/rotation/RotationPage';
 import { AlphaVantageProvider } from '../providers/alpha-vantage';
 import { TwelveDataProvider } from '../providers/twelve-data';
 import { YahooFinanceProvider } from '../providers/yahoo-finance';
@@ -50,6 +51,14 @@ import { readCredential } from '../storage/provider-credential';
 type LoadState =
   | { status: 'initial' | 'loading' | 'error' }
   | { status: 'ready'; dataset: Dataset };
+type Page = 'workspace' | 'correlation' | 'rotation';
+const routePage = (): Page =>
+  location.hash === '#correlation'
+    ? 'correlation'
+    : location.hash === '#rotation'
+      ? 'rotation'
+      : 'workspace';
+
 export function App({
   demoLoader = loadDemo,
   repository,
@@ -114,9 +123,7 @@ export function App({
     };
   }, [theme]);
   const preferenceSaved = useWorkspace((value) => value.preferenceSaved);
-  const routePage = () =>
-    location.hash === '#correlation' ? 'correlation' : 'workspace';
-  const [page, setPage] = useState<'workspace' | 'correlation'>(routePage);
+  const [page, setPage] = useState<Page>(routePage);
   useEffect(() => {
     const sync = () => setPage(routePage());
     window.addEventListener('popstate', sync);
@@ -126,8 +133,8 @@ export function App({
       window.removeEventListener('hashchange', sync);
     };
   }, []);
-  function showPage(next: 'workspace' | 'correlation') {
-    const hash = next === 'correlation' ? '#correlation' : '';
+  function showPage(next: Page) {
+    const hash = next === 'workspace' ? '' : `#${next}`;
     if (location.hash !== hash)
       history.pushState(
         null,
@@ -396,6 +403,16 @@ export function App({
             >
               Correlation
             </a>
+            <a
+              href="#rotation"
+              aria-current={page === 'rotation' ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                showPage('rotation');
+              }}
+            >
+              Sector rotation
+            </a>
           </nav>
           <div className="header-actions">
             <button
@@ -515,9 +532,15 @@ export function App({
             </div>
           )}
           {page === 'correlation' && (
-            <CorrelationPage onBack={() => showPage('workspace')} />
+            <CorrelationPage
+              onBack={() => showPage('workspace')}
+              palette={preference.heatmapPalette}
+            />
           )}
-          <div className="workspace-view" hidden={page === 'correlation'}>
+          {page === 'rotation' && (
+            <RotationPage onBack={() => showPage('workspace')} />
+          )}
+          <div className="workspace-view" hidden={page !== 'workspace'}>
             {importOpen && (
               <CsvImportPanel
                 onImport={(item) => void activate(item)}

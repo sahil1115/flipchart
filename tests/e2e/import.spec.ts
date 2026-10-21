@@ -200,6 +200,7 @@ test('cache deletion and preference reset have independent scopes', async ({
   await page
     .getByRole('button', { name: 'Reset Preferences', exact: true })
     .click();
+  await page.keyboard.press('Escape');
   await expect(
     page
       .getByRole('group', { name: 'Chart type', exact: true })

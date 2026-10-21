@@ -7,7 +7,7 @@ import {
 } from './correlation';
 import type { Period } from './correlation';
 import type { CloseSeries } from './history';
-import { cellColors, formatCorrelation } from './heatmap';
+import { cellColors, formatCorrelation, legendGradient } from './heatmap';
 
 const days = (count: number) =>
   Array.from(
@@ -88,6 +88,20 @@ it('reports insufficient shared history and constant series honestly', () => {
   expect(() => correlationMatrix([series('A', [1, 2])], 15, 'returns')).toThrow(
     'two stocks',
   );
+});
+
+it('offers a green and red palette with readable text and a matching legend', () => {
+  expect(cellColors(1, 'green-red').background).toContain('hsl(142');
+  expect(cellColors(-1, 'green-red').background).toContain('hsl(3,');
+  expect(cellColors(1, 'green-red').color).toBe('#ffffff');
+  expect(cellColors(-0.8, 'green-red').color).toBe('#ffffff');
+  expect(cellColors(0.05, 'green-red').color).toBe('#1b2430');
+  expect(cellColors(0.5)).toEqual(cellColors(0.5, 'blue-orange'));
+  expect(cellColors(null, 'green-red').color).toBe('var(--muted-text)');
+  expect(legendGradient('green-red')).toMatch(
+    /^linear-gradient\(to right, hsl\(3,.*hsl\(142, 60%, 32%\)\)$/,
+  );
+  expect(legendGradient()).toContain('hsl(214, 68%, 38%)');
 });
 
 it('colours positive blue and negative orange with readable text', () => {

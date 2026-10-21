@@ -3,9 +3,16 @@ import { GlassPanel } from './GlassPanel';
 import { TerminalSettings } from './TerminalSettings';
 import { TypographyControls } from './TypographyPicker';
 import { themes } from '../themes/themes';
+import { legendGradient } from '../correlation/heatmap';
+import type { HeatmapPalette } from '../correlation/heatmap';
 import type { ThemeDefinition } from '../themes/themes';
 import type { ThemePreference } from '../storage/theme-preference';
 import type { TypographyPreference } from '../storage/typography-preference';
+
+const heatmapOptions: { id: HeatmapPalette; label: string }[] = [
+  { id: 'blue-orange', label: 'Blue & orange' },
+  { id: 'green-red', label: 'Green & red' },
+];
 
 /** One gear menu for appearance, text and local storage actions. */
 export function SettingsMenu({
@@ -125,6 +132,36 @@ export function SettingsMenu({
           <div className="menu-section">
             <h3 className="menu-label">Text</h3>
             <TypographyControls value={typography} onChange={onTypography} />
+          </div>
+          <div
+            className="menu-section heatmap-colors"
+            role="radiogroup"
+            aria-labelledby="heatmap-colors-label"
+          >
+            <h3 className="menu-label" id="heatmap-colors-label">
+              Heatmap colors
+            </h3>
+            {heatmapOptions.map((option) => (
+              <label className="heatmap-option" key={option.id}>
+                <input
+                  type="radio"
+                  name="heatmap-palette"
+                  value={option.id}
+                  checked={
+                    (preference.heatmapPalette ?? 'blue-orange') === option.id
+                  }
+                  onChange={() =>
+                    onPreference({ ...preference, heatmapPalette: option.id })
+                  }
+                />
+                <span
+                  className="heatmap-swatch"
+                  aria-hidden="true"
+                  style={{ background: legendGradient(option.id) }}
+                />
+                {option.label}
+              </label>
+            ))}
           </div>
           <div className="menu-section">
             <label className="menu-row">

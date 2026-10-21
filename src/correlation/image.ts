@@ -1,4 +1,5 @@
 import { cellColors, formatCorrelation } from './heatmap';
+import type { HeatmapPalette } from './heatmap';
 
 export interface HeatmapImage {
   title: string;
@@ -6,6 +7,7 @@ export interface HeatmapImage {
   footer: string;
   symbols: string[];
   matrix: (number | null)[][];
+  palette?: HeatmapPalette;
 }
 
 /** A fixed light palette: exported images sit on white pages in documents. */
@@ -131,7 +133,7 @@ export function drawHeatmap(
     context.fillText(input.symbols[i]!, left - 10, y + cell.height / 2);
     row.forEach((value, j) => {
       const x = left + j * (cell.width + cell.gap);
-      const colors = cellColors(value);
+      const colors = cellColors(value, input.palette);
       context.fillStyle = value === null ? ink.empty : colors.background;
       roundRect(context, x, y, cell.width, cell.height, cell.radius);
       context.fillStyle = value === null ? ink.muted : colors.color;
@@ -145,7 +147,7 @@ export function drawHeatmap(
     });
   });
 
-  // Legend: −1 … +1 on the same blue/orange scale.
+  // Legend: −1 … +1 on the same scale as the cells.
   const legendY = top + gridHeight + 24;
   const legendWidth = Math.min(280, gridWidth - 60);
   const legendX = left + (gridWidth - legendWidth) / 2;
@@ -155,9 +157,9 @@ export function drawHeatmap(
     legendX + legendWidth,
     0,
   );
-  gradient.addColorStop(0, cellColors(-1).background);
-  gradient.addColorStop(0.5, cellColors(0).background);
-  gradient.addColorStop(1, cellColors(1).background);
+  gradient.addColorStop(0, cellColors(-1, input.palette).background);
+  gradient.addColorStop(0.5, cellColors(0, input.palette).background);
+  gradient.addColorStop(1, cellColors(1, input.palette).background);
   context.fillStyle = gradient;
   roundRect(context, legendX, legendY, legendWidth, 12, 6);
   context.fillStyle = ink.muted;

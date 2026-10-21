@@ -244,3 +244,54 @@ test('failed tickers are excluded and named; Back returns to the retained chart'
   await page.goBack();
   await expect(chart.locator('canvas').first()).toBeVisible();
 });
+
+test('Settings can switch the heatmap to green and red, and the choice persists', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const violations = await trackViolations(page);
+  await mockRelay(page);
+  await page.goto('/#correlation');
+  await page.getByRole('button', { name: 'Load correlation' }).click();
+  const cell = (row: number, column: number) =>
+    heatmap(page).locator('tbody tr').nth(row).locator('td').nth(column);
+  const background = (row: number, column: number) =>
+    cell(row, column).evaluate(
+      (node) => getComputedStyle(node).backgroundColor,
+    );
+  await expect(cell(0, 0)).toHaveText('1.00');
+  const blue = await background(0, 0);
+  const legend = page.locator('.heatmap-scale');
+  const blueLegend = await legend.evaluate(
+    (node) => getComputedStyle(node).backgroundImage,
+  );
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const menu = page.getByRole('region', { name: 'Settings' });
+  await expect(
+    menu.getByRole('radio', { name: 'Blue & orange' }),
+  ).toBeChecked();
+  await menu.getByRole('radio', { name: 'Green & red' }).check();
+  await page.keyboard.press('Escape');
+  // Self-correlation is +1, so its cell takes the palette's strong positive colour.
+  const green = await background(0, 0);
+  expect(green).not.toBe(blue);
+  const [red, g, b] = green.match(/\d+/g)!.map(Number);
+  expect(g).toBeGreaterThan(red!);
+  expect(g).toBeGreaterThan(b!);
+  expect(
+    await legend.evaluate((node) => getComputedStyle(node).backgroundImage),
+  ).not.toBe(blueLegend);
+
+  await page.reload();
+  await expect(cell(0, 0)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Load correlation' }).click();
+  expect(await background(0, 0)).toBe(green);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(
+    page
+      .getByRole('region', { name: 'Settings' })
+      .getByRole('radio', { name: 'Green & red' }),
+  ).toBeChecked();
+  expect(await violations()).toEqual([]);
+});
