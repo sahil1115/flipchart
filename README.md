@@ -1,6 +1,6 @@
 # FlipChart
 
-**Version: [v0.1.11](https://github.com/sahil1115/flipchart/releases/tag/v0.1.11)**
+**Version: [v0.1.12](https://github.com/sahil1115/flipchart/releases/tag/v0.1.12)**
 
 FlipChart is a stock-chart dashboard that runs in your browser. Explore prices, volume, and 15 technical indicators using demo data, your own CSV files, or a market-data API. It also includes a correlation heatmap, a sector-rotation chart and a performance comparison for US and Indian markets.
 
