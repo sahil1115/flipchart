@@ -2,7 +2,7 @@
 
 **Version: [v0.1.11](https://github.com/sahil1115/flipchart/releases/tag/v0.1.11)**
 
-FlipChart is a stock-chart dashboard that runs in your browser. Explore prices, volume, and 15 technical indicators using demo data, your own CSV files, or a market-data API. It also includes a correlation heatmap and a sector-rotation chart for US and Indian markets.
+FlipChart is a stock-chart dashboard that runs in your browser. Explore prices, volume, and 15 technical indicators using demo data, your own CSV files, or a market-data API. It also includes a correlation heatmap, a sector-rotation chart and a performance comparison for US and Indian markets.
 
 ## Run locally
 
@@ -30,7 +30,8 @@ No backend, database server, or API key is needed for demo data or CSV imports.
 - Hover to inspect, click or tap to pin a bar, and use the arrow buttons to step through history.
 - Pan and zoom the chart, change the date range, and adjust calculation parameters below the workspace.
 - Save listings to your watchlist and export chart data as CSV.
-- Choose **Correlation** or **Sector rotation** at the top for market-wide views. See [Market analysis](#market-analysis).
+- Choose **Volatility**, then **Drawdown**, below the charts to see how far the price is below its highest close so far (0 at a new high), with the worst fall reached up to each bar. It is measured from the start of the loaded history, so load more history to include older peaks.
+- Choose **Correlation**, **Sector rotation** or **Performance** at the top for market-wide views. See [Market analysis](#market-analysis).
 - Open **Settings** (the gear at the top right) to choose a theme: Glass Light, Soft Clay, Midnight Clay, Frosted Mono, Ocean Blue, Plum Noir, Notebook (ruled paper, handwriting and highlighter), or Terminal. The same menu changes the font and text size, picks the heatmap colors (blue and orange, or green and red), reduces visual effects, and resets preferences or clears the cache.
 - The Terminal theme offers Dark/White backgrounds and Solar Yellow, Heritage Gold, Electric Blue, Emerald Green, Rose Pink, Royal Purple, or Pure Contrast accents. Pure Contrast uses white on black or black on white.
 - Your theme, text, and heatmap color settings stay saved in this browser.
@@ -39,7 +40,7 @@ Imported datasets and dashboard preferences stay in this browser when storage is
 
 ## Market analysis
 
-Both pages load daily history through the local Yahoo relay, so they need `npm run dev` or `npm run preview`. Data is fetched only when you choose **Load**, is kept for the session, and comes from an unofficial Yahoo Finance connection. Each result is a self-contained card: use **Copy image** to paste it into a document or chat, or download it as JPG or CSV.
+These pages load daily history through the local Yahoo relay, so they need `npm run dev` or `npm run preview`. Data is fetched only when you choose **Load**, is kept for the session, and comes from an unofficial Yahoo Finance connection. Each result is a self-contained card: use **Copy image** to paste it into a document or chat, or download it as JPG or CSV.
 
 ### Correlation heatmap
 
@@ -65,6 +66,14 @@ How it is calculated:
 - Only completed weeks are used, so the newest reading is the last full week.
 - India uses NSE-listed sector ETFs because Yahoo's history for most NSE sector indices is incomplete.
 - This is an openly described measure, not the proprietary Relative Rotation Graph calculation, so values will not match other tools. It describes recent relative performance; it does not predict.
+
+### Performance comparison
+
+Compare how up to eight stocks did from the same starting point, next to their index (DIA, SPY, QQQ or NIFTYBEES, drawn as a dashed line). Pick a market, an industry, the top 5 or 8 stocks, and a period of 1, 3 or 6 months or 1 year, then choose **Load performance**. Switching the period or hiding the index does not fetch again. Hover over the chart, or use the arrow keys, to read every line on one date; hover over a table row to bring its line forward. The table lists each stock's return, its difference from the index in percentage points, and its largest fall from a peak in the period. Returns use closing prices on days every stock traded and are not adjusted for dividends.
+
+![Performance comparison of five large S&P 500 stocks against SPY over three months](assets/screenshots/performance.png)
+
+_Screenshot from live Yahoo Finance data on 29 October 2026. Values change with the market._
 
 ## Theme previews
 

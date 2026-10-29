@@ -40,6 +40,7 @@ import { Landing } from '../features/dashboard/Landing';
 import { ProviderPanel } from '../features/settings/ProviderPanel';
 import { CorrelationPage } from '../features/correlation/CorrelationPage';
 import { RotationPage } from '../features/rotation/RotationPage';
+import { PerformancePage } from '../features/performance/PerformancePage';
 import { AlphaVantageProvider } from '../providers/alpha-vantage';
 import { TwelveDataProvider } from '../providers/twelve-data';
 import { YahooFinanceProvider } from '../providers/yahoo-finance';
@@ -51,13 +52,10 @@ import { readCredential } from '../storage/provider-credential';
 type LoadState =
   | { status: 'initial' | 'loading' | 'error' }
   | { status: 'ready'; dataset: Dataset };
-type Page = 'workspace' | 'correlation' | 'rotation';
+const pages = ['correlation', 'rotation', 'performance'] as const;
+type Page = 'workspace' | (typeof pages)[number];
 const routePage = (): Page =>
-  location.hash === '#correlation'
-    ? 'correlation'
-    : location.hash === '#rotation'
-      ? 'rotation'
-      : 'workspace';
+  pages.find((page) => location.hash === `#${page}`) ?? 'workspace';
 
 export function App({
   demoLoader = loadDemo,
@@ -413,6 +411,16 @@ export function App({
             >
               Sector rotation
             </a>
+            <a
+              href="#performance"
+              aria-current={page === 'performance' ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                showPage('performance');
+              }}
+            >
+              Performance
+            </a>
           </nav>
           <div className="header-actions">
             <button
@@ -539,6 +547,12 @@ export function App({
           )}
           {page === 'rotation' && (
             <RotationPage onBack={() => showPage('workspace')} />
+          )}
+          {page === 'performance' && (
+            <PerformancePage
+              onBack={() => showPage('workspace')}
+              dark={theme.colorScheme === 'dark'}
+            />
           )}
           <div className="workspace-view" hidden={page !== 'workspace'}>
             {importOpen && (

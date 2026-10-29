@@ -15,7 +15,8 @@ export type IndicatorId =
   | 'cci'
   | 'williams'
   | 'roc'
-  | 'volatility';
+  | 'volatility'
+  | 'drawdown';
 export type Visibility = Record<IndicatorId, boolean>;
 export const momentumIds = [
   'rsi',
@@ -41,6 +42,7 @@ export const defaultVisibility: Visibility = {
   williams: false,
   roc: false,
   volatility: false,
+  drawdown: false,
 };
 export interface IndicatorDefinition {
   id: IndicatorId;
@@ -55,6 +57,8 @@ export interface IndicatorDefinition {
     name: string;
     values: Values;
     histogram?: boolean;
+    /** Draw in the theme's negative colour instead of the series colour. */
+    tone?: 'negative';
     required?: number;
   }[];
 }
@@ -213,6 +217,25 @@ export function definitions(
       formula: `Sample standard deviation (N−1 denominator) of ${p.volatilityPeriod} log returns × √${annualization[interval]} × 100. Annualization approximates ${annualization[interval]} ${interval} bars/year. Non-positive closes make affected return windows unavailable.`,
       required: p.volatilityPeriod + 1,
       series: [{ name: 'Annualized volatility %', values: o.volatility }],
+    },
+    {
+      id: 'drawdown',
+      name: 'Drawdown',
+      group: 'Volatility',
+      units: 'percent',
+      guides: [0],
+      formula:
+        '100 × (close ÷ highest finalized close so far − 1), measured from the start of the loaded history, so 0 means a new high. Worst so far is the lowest drawdown reached up to that bar. Load more history to measure against older peaks.',
+      required: 1,
+      series: [
+        {
+          name: 'Drawdown %',
+          values: o.drawdown.current,
+          histogram: true,
+          tone: 'negative',
+        },
+        { name: 'Worst so far %', values: o.drawdown.worst },
+      ],
     },
     {
       id: 'obv',

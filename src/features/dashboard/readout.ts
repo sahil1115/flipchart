@@ -36,5 +36,6 @@ export const paneLabels: Record<string, string> = {
   roc: 'ROC',
   atr: 'ATR',
   volatility: 'HV',
+  drawdown: 'Drawdown',
   obv: 'OBV',
 };

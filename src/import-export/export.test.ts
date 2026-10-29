@@ -13,8 +13,13 @@ it('round-trips all named outputs, missing warm-up and OHLCV at full precision w
   }).data;
   expect(rows).toHaveLength(dataset.candles.length);
   expect(Object.keys(rows[0]!).filter((key) => key.includes('.'))).toHaveLength(
-    24,
+    26,
   );
+  // Drawdown starts at 0: the first close is its own peak.
+  const drawdownKey = Object.keys(rows[0]!).find((key) =>
+    key.startsWith('drawdown.'),
+  )!;
+  expect(rows[0]![drawdownKey]).toBe('0');
   const rsiKey = Object.keys(rows[0]!).find((key) => key.startsWith('rsi.'))!;
   expect(rows[0]![rsiKey]).toBe('');
   const calculated = calculateDataset(dataset, parameters);

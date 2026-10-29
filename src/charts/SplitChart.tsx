@@ -168,9 +168,10 @@ function DetailPlot({
         ]
       : (item?.series ?? []);
     entries.forEach((entry, index) => {
-      const color = [palette.accent, palette.crosshair, palette.negative][
-        index % 3
-      ]!;
+      const color =
+        'tone' in entry && entry.tone === 'negative'
+          ? palette.negative
+          : [palette.accent, palette.crosshair, palette.negative][index % 3]!;
       const series = entry.histogram
         ? chart.addSeries(HistogramSeries, {
             color,

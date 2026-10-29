@@ -8,6 +8,7 @@ import {
   calculate,
   calculateDataset,
   defaults,
+  drawdown,
   ema,
   latestValue,
   macd,
@@ -15,6 +16,7 @@ import {
   rsi,
   sma,
   validateParameters,
+  worstSoFar,
 } from './core';
 import type { Outputs, Values } from './core';
 
@@ -198,4 +200,47 @@ it('never emits NaN or Infinity for numeric overflow', () => {
       .flat()
       .every((value) => value === null || Number.isFinite(value)),
   ).toBe(true);
+});
+
+it('measures drawdown from the running peak and keeps unknown closes unknown', () => {
+  const closes = [100, 120, 90, null, 60, 130, 117];
+  const result = drawdown(closes);
+  expect(result[0]).toBe(0);
+  expect(result[1]).toBe(0); // new high
+  expect(result[2]).toBeCloseTo(-25, 10); // 90 / 120
+  expect(result[3]).toBeNull();
+  expect(result[4]).toBeCloseTo(-50, 10); // 60 / 120
+  expect(result[5]).toBe(0); // recovered to a new high
+  expect(result[6]).toBeCloseTo(-10, 10); // 117 / 130
+  expect(worstSoFar(result)).toEqual([
+    0,
+    0,
+    result[2],
+    null,
+    result[4],
+    result[4],
+    result[4],
+  ]);
+  // Non-positive closes cannot set a peak or produce a reading.
+  expect(drawdown([0, -5, 10, 5])).toEqual([null, null, 0, -50]);
+  expect(drawdown([])).toEqual([]);
+});
+
+it('includes drawdown in the calculated outputs, aligned and skipping provisional bars', () => {
+  const candles = [100, 80, 90].map((close, index) => ({
+    time: `2026-01-0${index + 5}`,
+    open: close,
+    high: close,
+    low: close,
+    close,
+    volume: 1,
+    ...(index === 2 ? { incomplete: true } : {}),
+  })) as Candle[];
+  const outputs = calculate(candles, defaults);
+  const [first, second, provisional] = outputs.drawdown.current;
+  expect(first).toBe(0);
+  expect(second).toBeCloseTo(-20, 10);
+  expect(provisional).toBeNull();
+  expect(outputs.drawdown.worst[1]).toBe(second);
+  expect(outputs.drawdown.worst[2]).toBeNull();
 });

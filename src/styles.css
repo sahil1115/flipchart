@@ -4156,3 +4156,128 @@ html #settings-menu {
     height: 8px;
   }
 }
+
+.heatmap-card.performance-card {
+  width: min(100%, 880px);
+}
+.performance-chart-host {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+}
+.performance-chart-host:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.performance-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+.performance-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.performance-zero {
+  stroke: var(--muted-text);
+  stroke-width: 1.5;
+}
+.performance-tick {
+  fill: var(--muted-text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.performance-label {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.performance-line {
+  transition: opacity 120ms ease;
+}
+.performance-crosshair line {
+  stroke: var(--muted-text);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.performance-crosshair circle {
+  stroke: var(--surface-opaque);
+  stroke-width: 2;
+}
+.performance-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+.performance-tooltip {
+  position: absolute;
+  top: 12px;
+  display: grid;
+  gap: 3px;
+  min-width: 140px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-opaque);
+  box-shadow: 0 6px 18px -8px rgb(0 0 0 / 0.3);
+  font-size: calc(12px * var(--text-scale, 1));
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.performance-tooltip span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.performance-tooltip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.performance-tooltip b {
+  margin-left: auto;
+  padding-left: 12px;
+  font-weight: 600;
+}
+.correlation-controls label.performance-index input {
+  padding: 0;
+  width: auto;
+  flex: none;
+  margin: 0;
+}
+.correlation-controls label.performance-index {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  min-height: 40px;
+}
+.series-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: baseline;
+}
+.series-swatch.dashed {
+  width: 14px;
+  height: 0;
+  border-radius: 0;
+  border-top: 2px dashed;
+  vertical-align: middle;
+}
+.performance-table tbody tr {
+  cursor: default;
+}
+.performance-table tbody tr:hover,
+.performance-table tbody tr:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.performance-benchmark-row th,
+.performance-benchmark-row td {
+  color: var(--muted-text);
+}

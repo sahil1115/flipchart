@@ -234,6 +234,28 @@ export function obv(candles: readonly Candle[]): Values {
     return finite(total);
   });
 }
+/**
+ * Percent below the highest close so far: 100 × (close ÷ running peak − 1),
+ * so 0 at a new high. Unknown or non-positive closes stay unknown and do not
+ * move the peak.
+ */
+export function drawdown(closes: readonly (number | null)[]): Values {
+  let peak = -Infinity;
+  return closes.map((close) => {
+    if (close === null || !Number.isFinite(close) || close <= 0) return null;
+    peak = Math.max(peak, close);
+    return finite(100 * (close / peak - 1));
+  });
+}
+/** The lowest drawdown reached up to each bar. */
+export function worstSoFar(values: Values): Values {
+  let worst: number | null = null;
+  return values.map((value) => {
+    if (value === null) return null;
+    worst = worst === null ? value : Math.min(worst, value);
+    return worst;
+  });
+}
 export interface Outputs {
   smaShort: Values;
   smaMedium: Values;
@@ -252,6 +274,7 @@ export interface Outputs {
   williams: Values;
   roc: Values;
   volatility: Values;
+  drawdown: { current: Values; worst: Values };
 }
 export function calculate(
   candles: readonly Candle[],
@@ -282,6 +305,7 @@ export function calculate(
     parameters.stochasticD,
   );
   const movement = directional(finalized, parameters.adxPeriod);
+  const underwater = drawdown(close);
   return {
     smaShort: align(sma(close, parameters.smaShort)),
     smaMedium: align(sma(close, parameters.smaMedium)),
@@ -323,6 +347,10 @@ export function calculate(
         annualization[interval],
       ),
     ),
+    drawdown: {
+      current: align(underwater),
+      worst: align(worstSoFar(underwater)),
+    },
   };
 }
 const cache = new WeakMap<

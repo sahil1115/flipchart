@@ -114,3 +114,35 @@ it('falls back for corrupt preferences and denied storage without blocking sessi
   expect(writeDashboard(defaultDashboard())).toBe(false);
   expect(writeWatchlist([])).toBe(false);
 });
+
+it('keeps saved preferences from before the drawdown indicator existed', () => {
+  const base = defaultDashboard();
+  const withoutDrawdown = (flags: Record<string, boolean>) =>
+    Object.fromEntries(
+      Object.entries(flags).filter(([id]) => id !== 'drawdown'),
+    );
+  const saved = {
+    ...base,
+    parameters: { ...base.parameters, rsiPeriod: 9 },
+    visible: { ...withoutDrawdown(base.visible), macd: false },
+    chartVisible: withoutDrawdown(base.chartVisible),
+    collapsed: withoutDrawdown(base.collapsed),
+    activePane: 'atr',
+  };
+  const restored = validateDashboard(saved);
+  expect(restored.parameters.rsiPeriod).toBe(9);
+  expect(restored.visible.macd).toBe(false);
+  expect(restored.visible.drawdown).toBe(false);
+  expect(restored.collapsed.drawdown).toBe(false);
+  expect(restored.activePane).toBe('atr');
+  expect(
+    validateDashboard({ ...base, activePane: 'drawdown' }).activePane,
+  ).toBe('drawdown');
+  // A present but invalid flag is still rejected.
+  expect(() =>
+    validateDashboard({
+      ...base,
+      visible: { ...base.visible, drawdown: 'yes' },
+    }),
+  ).toThrow();
+});

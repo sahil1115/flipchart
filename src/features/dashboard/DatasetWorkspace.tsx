@@ -26,7 +26,7 @@ import { formatValue, paneLabels } from './readout';
 const plotGroups = {
   'Price & Trend': ['adx'],
   Momentum: momentumIds,
-  Volatility: ['atr', 'volatility'],
+  Volatility: ['atr', 'volatility', 'drawdown'],
   Volume: ['obv'],
 } as const;
 type PlotGroup = keyof typeof plotGroups;
@@ -80,10 +80,12 @@ export function DatasetWorkspace({
     'Price & Trend': 'adx',
     Momentum:
       selectedPane === 'adx' ||
-      ['atr', 'volatility', 'obv'].includes(selectedPane)
+      ['atr', 'volatility', 'drawdown', 'obv'].includes(selectedPane)
         ? 'rsi'
         : selectedPane,
-    Volatility: selectedPane === 'volatility' ? 'volatility' : 'atr',
+    Volatility: ['volatility', 'drawdown'].includes(selectedPane)
+      ? selectedPane
+      : 'atr',
     Volume: 'obv',
   });
   const choosePane = (id: IndicatorId, group: PlotGroup = plotGroup) => {

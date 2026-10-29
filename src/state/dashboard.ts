@@ -35,10 +35,15 @@ export function validateDashboard(value: unknown): DashboardPreference {
   if (raw.version !== 1 && raw.version !== 2 && raw.version !== 3)
     throw new Error('Unknown preference version');
   const base = defaultDashboard();
-  const flags = (value: unknown): Visibility => {
+  const flags = (
+    value: unknown,
+    defaults: Visibility = defaultVisibility,
+  ): Visibility => {
     const source = object(value, 'visibility');
     return Object.fromEntries(
       ids.map((id) => {
+        // Preferences saved before an indicator existed simply lack its key.
+        if (source[id] === undefined) return [id, defaults[id]];
         if (typeof source[id] !== 'boolean')
           throw new Error('Invalid visibility');
         return [id, source[id]];
@@ -66,7 +71,7 @@ export function validateDashboard(value: unknown): DashboardPreference {
     ) as unknown as Parameters;
     const error = validateParameters(base.parameters);
     if (error) throw new Error(error);
-    base.collapsed = flags(raw.collapsed);
+    base.collapsed = flags(raw.collapsed, defaultDashboard().collapsed);
     if (
       raw.expanded !== null &&
       raw.expanded !== 'all' &&
