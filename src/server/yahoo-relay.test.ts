@@ -120,11 +120,11 @@ it('passes quota/access failures honestly and limits repeated local requests', a
     async () => new Response('', { status: 429 }),
   );
   const origin = await relay(fetcher);
-  for (let i = 0; i < 31; i++)
+  for (let i = 0; i < 61; i++)
     expect((await fetch(`${origin}/api/yahoo/history?${query}`)).status).toBe(
       429,
     );
-  expect(fetcher).toHaveBeenCalledTimes(30);
+  expect(fetcher).toHaveBeenCalledTimes(60);
   const rejected = await relay(
     vi.fn(async () => new Response('', { status: 403 })) as typeof fetch,
   );
@@ -219,4 +219,27 @@ it('relays name search to the fixed Yahoo search endpoint and rejects unsafe que
     ).status,
   ).toBe(405);
   expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('tells the browser how long to wait when the local limit is reached', async () => {
+  const fetcher = vi.fn<typeof fetch>(async () =>
+    Response.json({ chart: { result: [], error: null } }),
+  );
+  const origin = await relay(fetcher);
+  for (let i = 0; i < 60; i++)
+    expect((await fetch(`${origin}/api/yahoo/history?${query}`)).status).toBe(
+      200,
+    );
+  const limited = await fetch(`${origin}/api/yahoo/history?${query}`);
+  expect(limited.status).toBe(429);
+  const wait = Number(limited.headers.get('retry-after'));
+  expect(wait).toBeGreaterThanOrEqual(1);
+  expect(wait).toBeLessThanOrEqual(60);
+  const body = (await limited.json()) as {
+    error: { category: string; message: string };
+  };
+  expect(body.error.category).toBe('quota-exhausted');
+  expect(body.error.message).toContain('60 Yahoo requests a minute');
+  expect(body.error.message).toContain(`about ${wait} seconds`);
+  expect(fetcher).toHaveBeenCalledTimes(60);
 });

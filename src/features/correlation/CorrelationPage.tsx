@@ -10,7 +10,7 @@ import type {
   CorrelationResult,
   Period,
 } from '../../correlation/correlation';
-import { loadCloses } from '../../correlation/history';
+import { groupFailures, loadCloses } from '../../correlation/history';
 import {
   constituentsAsOf,
   findMarket,
@@ -379,10 +379,7 @@ export function CorrelationPage({
       )}
       {failures.length > 0 && (
         <div className="notice" role="status">
-          Not loaded and excluded:{' '}
-          {failures
-            .map((failure) => `${failure.ticker} (${failure.message})`)
-            .join('; ')}
+          Not loaded and excluded: {groupFailures(failures)}
         </div>
       )}
       {result && (

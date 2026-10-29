@@ -41,6 +41,29 @@ const statusMessages: Record<number, [ProviderError['category'], string]> = {
   ],
 };
 
+/** A short message the relay itself sent with an error, if any. */
+function relayMessage(payload: unknown): string | null {
+  const error =
+    typeof payload === 'object' && payload !== null && 'error' in payload
+      ? payload.error
+      : null;
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? error.message
+      : null;
+  return typeof message === 'string' && message.length <= 200 ? message : null;
+}
+
+/** Failed tickers grouped by message, so one cause is stated once. */
+export function groupFailures(failures: { ticker: string; message: string }[]) {
+  const groups = new Map<string, string[]>();
+  for (const { ticker, message } of failures)
+    groups.set(message, [...(groups.get(message) ?? []), ticker]);
+  return [...groups]
+    .map(([message, tickers]) => `${tickers.join(', ')} (${message})`)
+    .join('; ');
+}
+
 /** Daily closes through the same-origin Yahoo relay, validated against the market. */
 export async function fetchCloses(
   market: Market,
@@ -89,11 +112,15 @@ export async function fetchCloses(
   }
   if (signal.aborted) throw cancelled();
   if (!response.ok) {
-    const [category, message] = statusMessages[response.status] ?? [
+    const [category, fallback] = statusMessages[response.status] ?? [
       'provider-outage',
       'Yahoo history is temporarily unavailable.',
     ];
-    throw new ProviderError(category, message);
+    // The relay's own rate-limit text says how long to wait.
+    throw new ProviderError(
+      category,
+      (response.status === 429 && relayMessage(payload)) || fallback,
+    );
   }
   try {
     const chart = object(object(payload, 'Yahoo response').chart, 'chart');
@@ -174,7 +201,10 @@ export function clearCloseCache() {
 
 /**
  * Loads tickers two at a time (the relay's concurrency limit), in their given
- * order. A failed ticker is reported and excluded; cancellation stops all.
+ * order. A failed ticker is reported and excluded; cancellation stops all. A
+ * rate limit stops further requests, since they would only be refused too, and
+ * the tickers not yet requested are reported with the same message. Closes
+ * already loaded are cached, so loading again later fetches only the rest.
  */
 export async function loadCloses(
   market: Market,
@@ -186,9 +216,10 @@ export async function loadCloses(
   const day = exchangeDate(market.timezone, options.now ?? new Date());
   const results: (CloseSeries | { ticker: string; message: string })[] = [];
   let next = 0,
-    done = 0;
+    done = 0,
+    limited: string | null = null;
   const worker = async () => {
-    while (next < tickers.length) {
+    while (next < tickers.length && limited === null) {
       const index = next++;
       const ticker = tickers[index]!;
       const key = `${market.id}:${ticker}:${day}:${options.lookback ?? lookbackDays}`;
@@ -203,13 +234,16 @@ export async function loadCloses(
         results[index] = series;
       } catch (error) {
         if (signal.aborted) throw error;
-        results[index] = {
-          ticker,
-          message:
-            error instanceof ProviderError
-              ? error.message
-              : 'The request failed.',
-        };
+        const message =
+          error instanceof ProviderError
+            ? error.message
+            : 'The request failed.';
+        if (
+          error instanceof ProviderError &&
+          error.category === 'quota-exhausted'
+        )
+          limited ??= message;
+        results[index] = { ticker, message };
       }
       onProgress(++done, tickers.length);
     }
@@ -217,6 +251,11 @@ export async function loadCloses(
   await Promise.all([worker(), worker()]);
   if (signal.aborted)
     throw new ProviderError('cancelled', 'The request was cancelled.');
+  // Anything not requested because of a rate limit is reported with its message.
+  tickers.forEach((ticker, index) => {
+    if (!results[index] && limited !== null)
+      results[index] = { ticker, message: limited };
+  });
   return {
     series: results.filter((item): item is CloseSeries => 'closes' in item),
     failures: results.filter(

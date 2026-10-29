@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import {
   clearCloseCache,
   fetchCloses,
+  groupFailures,
   historyWindow,
   loadCloses,
 } from './history';
@@ -189,4 +190,92 @@ it('stops everything when cancelled', async () => {
       now,
     }),
   ).rejects.toMatchObject({ category: 'cancelled' });
+});
+
+it('shows the relay rate-limit message, with how long to wait', async () => {
+  const fetcher = respond(
+    {
+      error: {
+        category: 'quota-exhausted',
+        message:
+          'The local relay allows 60 Yahoo requests a minute. Try again in about 42 seconds.',
+      },
+    },
+    429,
+  );
+  await expect(
+    fetchCloses(us, 'AAPL', signal(), { fetcher, now }),
+  ).rejects.toMatchObject({
+    category: 'quota-exhausted',
+    message: expect.stringContaining('about 42 seconds'),
+  });
+  // Without a relay message the generic text is used.
+  await expect(
+    fetchCloses(us, 'AAPL', signal(), { fetcher: respond({}, 429), now }),
+  ).rejects.toMatchObject({
+    message: expect.stringContaining('limiting requests'),
+  });
+});
+
+it('stops requesting after a rate limit, reports the rest once, and keeps what loaded', async () => {
+  let calls = 0;
+  const fetcher = vi.fn<typeof fetch>(async (input) => {
+    calls++;
+    const symbol = new URL(String(input), 'http://x').searchParams.get(
+      'symbol',
+    )!;
+    // The first two succeed; everything after is refused.
+    return calls <= 2
+      ? Response.json(chart(symbol, [1, 2, 3]))
+      : Response.json(
+          { error: { message: 'Try again in about 30 seconds.' } },
+          { status: 429 },
+        );
+  });
+  const tickers = [
+    'AAPL',
+    'MSFT',
+    'NVDA',
+    'AMZN',
+    'GOOGL',
+    'META',
+    'TSLA',
+    'AVGO',
+  ];
+  const loaded = await loadCloses(us, tickers, signal(), undefined, {
+    fetcher,
+    now,
+  });
+  expect(loaded.series.map((item) => item.symbol)).toEqual(['AAPL', 'MSFT']);
+  // Two succeeded, two more were refused; the other four were never requested.
+  expect(fetcher).toHaveBeenCalledTimes(4);
+  expect(loaded.failures.map((item) => item.ticker)).toEqual(tickers.slice(2));
+  expect(new Set(loaded.failures.map((item) => item.message)).size).toBe(1);
+  // Loading again fetches only what is missing.
+  fetcher.mockImplementation(async (input) =>
+    Response.json(
+      chart(
+        new URL(String(input), 'http://x').searchParams.get('symbol')!,
+        [1, 2, 3],
+      ),
+    ),
+  );
+  const retry = await loadCloses(us, tickers, signal(), undefined, {
+    fetcher,
+    now,
+  });
+  expect(retry.failures).toEqual([]);
+  expect(retry.series).toHaveLength(8);
+  expect(fetcher).toHaveBeenCalledTimes(4 + 6);
+});
+
+it('groups failed tickers by their message', () => {
+  expect(
+    groupFailures([
+      { ticker: 'A', message: 'limit' },
+      { ticker: 'B', message: 'not found' },
+      { ticker: 'C', message: 'limit' },
+    ]),
+  ).toBe('A, C (limit); B (not found)');
+  expect(groupFailures([])).toBe('');
 });

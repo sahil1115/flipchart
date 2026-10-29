@@ -7,7 +7,7 @@ export const relaySymbolPattern =
   /^(?:[A-Z0-9][A-Z0-9&_-]{0,39}\.NS|[A-Z][A-Z0-9-]{0,9})$/;
 /** Company names or tickers: letters, digits, spaces and a few name punctuation marks. */
 export const relayQueryPattern = /^[\p{L}\p{N}][\p{L}\p{N} .&'-]{0,39}$/u;
-const requestsPerMinute = 30;
+const requestsPerMinute = 60;
 
 /** A loopback-only, same-origin route to one fixed public data endpoint. */
 export function createYahooRelay(
@@ -26,11 +26,17 @@ export function createYahooRelay(
           ? 'search'
           : null;
     if (!route) return next();
-    const reply = (status: number, category: string, message: string) => {
+    const reply = (
+      status: number,
+      category: string,
+      message: string,
+      headers: Record<string, string> = {},
+    ) => {
       res.writeHead(status, {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff',
+        ...headers,
       });
       res.end(JSON.stringify({ error: { category, message } }));
     };
@@ -115,12 +121,26 @@ export function createYahooRelay(
       notFound = 'Yahoo did not find history for this symbol.';
     }
     recent = recent.filter((time) => Date.now() - time < 60_000);
-    if (active >= 2 || recent.length >= requestsPerMinute)
+    if (active >= 2)
       return reply(
         429,
         'quota-exhausted',
-        `Local Yahoo requests are limited to ${requestsPerMinute} per minute and two at a time. Wait before trying again.`,
+        'Two Yahoo requests are already running. Try again in a moment.',
+        { 'Retry-After': '2' },
       );
+    if (recent.length >= requestsPerMinute) {
+      // The oldest request leaves the one-minute window first.
+      const wait = Math.max(
+        1,
+        Math.ceil((recent[0]! + 60_000 - Date.now()) / 1000),
+      );
+      return reply(
+        429,
+        'quota-exhausted',
+        `The local relay allows ${requestsPerMinute} Yahoo requests a minute and they are used up. Try again in about ${wait} seconds.`,
+        { 'Retry-After': String(wait) },
+      );
+    }
     active++;
     recent.push(Date.now());
     const controller = new AbortController();

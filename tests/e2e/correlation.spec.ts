@@ -295,3 +295,32 @@ test('Settings can switch the heatmap to green and red, and the choice persists'
   ).toBeChecked();
   expect(await violations()).toEqual([]);
 });
+
+test('a rate limit is explained once and stops further requests', async ({
+  page,
+}) => {
+  let requests = 0;
+  await page.route('**/api/yahoo/history?*', async (route) => {
+    requests++;
+    await route.fulfill({
+      status: 429,
+      json: {
+        error: {
+          category: 'quota-exhausted',
+          message:
+            'The local relay allows 60 Yahoo requests a minute and they are used up. Try again in about 40 seconds.',
+        },
+      },
+    });
+  });
+  await page.goto('/#correlation');
+  await page.getByRole('button', { name: 'Load correlation' }).click();
+  const notice = page.getByText(/Not loaded and excluded/);
+  await expect(notice).toBeVisible();
+  // One message for all ten stocks, naming how long to wait.
+  await expect(notice).toContainText('about 40 seconds');
+  expect((await notice.innerText()).match(/about 40 seconds/g)).toHaveLength(1);
+  await expect(page.getByRole('alert')).toContainText('Fewer than two stocks');
+  // Two requests were in flight when the limit was hit; the rest were not sent.
+  expect(requests).toBeLessThanOrEqual(2);
+});

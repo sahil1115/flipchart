@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import { GlassPanel } from '../../components/GlassPanel';
-import { loadCloses } from '../../correlation/history';
+import { groupFailures, loadCloses } from '../../correlation/history';
 import {
   downloadBlob,
   downloadText,
@@ -291,10 +291,7 @@ export function RotationPage({ onBack }: { onBack: () => void }) {
       )}
       {failures.length > 0 && (
         <div className="notice" role="status">
-          Not loaded and excluded:{' '}
-          {failures
-            .map((failure) => `${failure.ticker} (${failure.message})`)
-            .join('; ')}
+          Not loaded and excluded: {groupFailures(failures)}
         </div>
       )}
       {result && result.skipped.length > 0 && (
