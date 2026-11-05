@@ -31,6 +31,7 @@ No backend, database server, or API key is needed for demo data or CSV imports.
 - Pan and zoom the chart, change the date range, and adjust calculation parameters below the workspace.
 - Save listings to your watchlist and export chart data as CSV.
 - Choose **Volatility**, then **Drawdown**, below the charts to see how far the price is below its highest close so far (0 at a new high), with the worst fall reached up to each bar. It is measured from the start of the loaded history, so load more history to include older peaks.
+- Scroll below the charts to **Monthly returns**: a year-by-month grid of how the loaded stock changed in each calendar month, with an average and an up-month share for every month of the year. It uses the history already loaded, so it fetches nothing more. See [Monthly returns](#monthly-returns).
 - Choose **Correlation**, **Sector rotation** or **Performance** at the top for market-wide views. See [Market analysis](#market-analysis).
 - Open **Settings** (the gear at the top right) to choose a theme: Glass Light, Soft Clay, Midnight Clay, Frosted Mono, Ocean Blue, Plum Noir, Notebook (ruled paper, handwriting and highlighter), or Terminal. The same menu changes the font and text size, picks the heatmap colors (blue and orange, or green and red), reduces visual effects, and resets preferences or clears the cache.
 - The Terminal theme offers Dark/White backgrounds and Solar Yellow, Heritage Gold, Electric Blue, Emerald Green, Rose Pink, Royal Purple, or Pure Contrast accents. Pure Contrast uses white on black or black on white.
@@ -74,6 +75,20 @@ Compare how up to eight stocks did from the same starting point, next to their i
 ![Performance comparison of five large S&P 500 stocks against SPY over three months](assets/screenshots/performance.png)
 
 _Screenshot from live Yahoo Finance data on 29 October 2026. Values change with the market._
+
+### Monthly returns
+
+On the Chart page, below the indicators, a year-by-month grid shows how much the loaded stock rose or fell in each calendar month, newest year first, with the year's change in the last column. The **Average** row and **Up months** row (the share of years that month closed higher) show which months have tended to be strong or weak. Colors follow your heatmap setting in **Settings**, and every cell prints its value. **Copy image**, **Download JPG** and **Download monthly CSV** work as on the other pages.
+
+![Monthly returns grid for HDFC Bank, with a row for each year, a column for each month, and average and up-month rows below](assets/screenshots/monthly-returns.png)
+
+_Screenshot from live Yahoo Finance data on 6 November 2026. Values change with the market._
+
+How it is calculated:
+
+- A month's return is its last close divided by the previous month's last close, minus one. The first month of the data has no previous close, so it is blank, and a month whose previous month is missing is never bridged.
+- The month still in progress is shown with a dashed outline, from the previous close to the latest completed day, and is left out of the average and up-month share. Those need at least three complete months.
+- It needs daily data, so it ignores the chart's weekly and monthly view, and it measures price changes, not dividends. Yahoo history is short, so averages from a few years are noisy. Past months do not predict future ones.
 
 ## Theme previews
 

@@ -596,6 +596,7 @@ export function App({
                 theme={theme}
                 onChangeData={home}
                 onHistoryRequirement={historyRequirement}
+                heatmapPalette={preference.heatmapPalette}
               />
             )}
             {library.datasets.length > 0 && (

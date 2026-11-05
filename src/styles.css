@@ -3308,6 +3308,85 @@ html[data-theme='glass-light'][data-reduced-effects='true']
   }
 }
 
+/* Monthly returns heatmap on the Chart page */
+.seasonality-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+.heatmap-card.seasonality-card {
+  width: max-content;
+  max-width: 100%;
+}
+.seasonality-card .heatmap-title {
+  max-width: none;
+}
+.seasonality-note {
+  display: block;
+  margin-bottom: 2px;
+}
+.seasonality-table {
+  border-collapse: separate;
+  border-spacing: 2px;
+  margin: 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+.seasonality-table caption {
+  caption-side: top;
+}
+.seasonality-table th {
+  padding: 4px 6px;
+  font-size: calc(12px * var(--text-scale, 1));
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+.seasonality-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: right;
+  background: var(--surface-opaque);
+}
+.seasonality-table td {
+  min-width: 46px;
+  height: 30px;
+  padding: 2px 4px;
+  text-align: center;
+  border-radius: 5px;
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.seasonality-table td.seasonality-year-column {
+  font-weight: 700;
+}
+.seasonality-table th.seasonality-year-column,
+.seasonality-table td.seasonality-year-column {
+  border-left: 6px solid transparent;
+  background-clip: padding-box;
+}
+.seasonality-table td.in-progress {
+  outline: 1.5px dashed var(--muted-text);
+  outline-offset: -2px;
+}
+.seasonality-table td.plain {
+  background: var(--surface-opaque);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.seasonality-stats tr:first-child th,
+.seasonality-stats tr:first-child td {
+  border-top: 8px solid transparent;
+  background-clip: padding-box;
+}
+@media (max-width: 600px) {
+  .seasonality-table td {
+    min-width: 38px;
+    height: 28px;
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+}
+
 /* Notebook theme: ruled paper, black-ink handwriting, yellow highlighter. */
 html[data-theme='notebook'] {
   background-attachment: fixed;
