@@ -7,6 +7,7 @@ import { cellColors, legendGradient } from '../../correlation/heatmap';
 import type { HeatmapPalette } from '../../correlation/heatmap';
 import { downloadBlob, downloadText } from '../../import-export/export';
 import { exchangeDate } from '../../providers/twelve-data';
+import { MonthlyStockPicker } from './MonthlyStockPicker';
 import { drawSeasonality } from '../../seasonality/image';
 import {
   colourScale,
@@ -46,16 +47,81 @@ const footerText = (dataset: Dataset, sourceName: string) =>
     },
   ).format(new Date())} · For information only, not financial advice`;
 
+const sourceNameOf = (dataset: Dataset) =>
+  dataset.metadata.mode === 'demo'
+    ? 'Synthetic demo data'
+    : dataset.metadata.mode === 'live'
+      ? dataset.metadata.provider === 'yahoo-finance'
+        ? 'Yahoo Finance'
+        : dataset.metadata.provider === 'alpha-vantage'
+          ? 'Alpha Vantage'
+          : 'Twelve Data'
+      : 'Imported CSV';
+
+/**
+ * The Monthly returns page. It has its own stock, chosen here, and does not
+ * follow or change the Chart page.
+ */
 export function SeasonalityPanel({
   dataset,
-  sourceName,
+  chartDataset,
+  onDataset,
+  palette,
+  onBack,
+}: {
+  /** The stock shown on this page, loaded here and independent of the chart. */
+  dataset: Dataset | null;
+  /** The Chart page's stock, which can be copied here once. */
+  chartDataset: Dataset | null;
+  onDataset: (dataset: Dataset) => void;
+  palette?: HeatmapPalette;
+  onBack: () => void;
+}) {
+  return (
+    <GlassPanel
+      className="seasonality-panel"
+      aria-labelledby="seasonality-title"
+    >
+      <div className="panel-heading">
+        <div>
+          <h2 id="seasonality-title">Monthly returns</h2>
+          <p className="small">
+            Which calendar months a stock has tended to rise or fall in. Each
+            cell is the month&apos;s change from the previous month&apos;s last
+            close. Choose a stock here; it is separate from the Chart tab.
+          </p>
+        </div>
+        <button onClick={onBack}>Back to chart</button>
+      </div>
+      <MonthlyStockPicker
+        loaded={dataset}
+        chartDataset={chartDataset}
+        onDataset={onDataset}
+      />
+      {dataset ? (
+        <MonthlyReturns
+          key={dataset.metadata.id}
+          dataset={dataset}
+          palette={palette}
+        />
+      ) : (
+        <p className="small" role="status">
+          No stock chosen yet. Search for one above, or copy the one from the
+          Chart tab.
+        </p>
+      )}
+    </GlassPanel>
+  );
+}
+
+function MonthlyReturns({
+  dataset,
   palette = 'blue-orange',
 }: {
-  /** The loaded daily dataset, never the weekly or monthly view of it. */
   dataset: Dataset;
-  sourceName: string;
   palette?: HeatmapPalette;
 }) {
+  const sourceName = sourceNameOf(dataset);
   const daily = dataset.metadata.interval === 'daily';
   const timezone = dataset.metadata.listing.timezone;
   const outcome = useMemo((): SeasonalityResult | string => {
@@ -170,21 +236,7 @@ export function SeasonalityPanel({
   }
 
   return (
-    <GlassPanel
-      className="seasonality-panel"
-      aria-labelledby="seasonality-title"
-    >
-      <div className="panel-heading">
-        <div>
-          <h2 id="seasonality-title">Monthly returns</h2>
-          <p className="small">
-            Which calendar months this stock has tended to rise or fall in. Each
-            cell is the month&apos;s change from the previous month&apos;s last
-            close. Calculated from the loaded daily history; nothing more is
-            fetched.
-          </p>
-        </div>
-      </div>
+    <>
       {!result && (
         <p className="small" role="status">
           {outcome as string}
@@ -364,6 +416,6 @@ export function SeasonalityPanel({
           )}
         </>
       )}
-    </GlassPanel>
+    </>
   );
 }

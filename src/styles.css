@@ -3312,12 +3312,49 @@ html[data-theme='glass-light'][data-reduced-effects='true']
 .seasonality-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-  margin-top: 16px;
+  gap: 16px;
+  margin: 16px 0 24px;
+  padding: 24px;
+}
+.seasonality-panel .panel-heading {
+  margin-bottom: 0;
+}
+.seasonality-panel .panel-heading p {
+  max-width: 68ch;
+  margin: 6px 0 0;
 }
 .heatmap-card.seasonality-card {
   width: max-content;
   max-width: 100%;
+}
+.seasonality-picker {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+}
+.seasonality-picker .seasonality-search {
+  grid-column: span 2;
+}
+.seasonality-picker .seasonality-status,
+.seasonality-picker .seasonality-results {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.seasonality-picker .provider-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .seasonality-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .seasonality-picker .seasonality-search {
+    grid-column: 1 / -1;
+  }
 }
 .seasonality-card .heatmap-title {
   max-width: none;
@@ -4359,4 +4396,35 @@ html #settings-menu {
 .performance-benchmark-row th,
 .performance-benchmark-row td {
   color: var(--muted-text);
+}
+
+/* Five page tabs no longer fit beside the brand and data pill on tablets. */
+@media (max-width: 960px) {
+  .app-shell .app-header {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+  }
+  .app-shell .page-tabs {
+    order: 3;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .page-tabs a {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .app-header .header-actions {
+    width: auto;
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .seasonality-panel {
+    padding: 16px;
+  }
+  .seasonality-picker {
+    padding: 12px;
+  }
 }

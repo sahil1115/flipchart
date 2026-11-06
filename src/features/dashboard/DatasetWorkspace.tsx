@@ -22,8 +22,6 @@ import { exportDataset, downloadText } from '../../import-export/export';
 import type { ExportWindow } from '../../import-export/export';
 import { dailySummary } from '../../indicators/summary';
 import { formatValue, paneLabels } from './readout';
-import { SeasonalityPanel } from '../seasonality/SeasonalityPanel';
-import type { HeatmapPalette } from '../../correlation/heatmap';
 
 const plotGroups = {
   'Price & Trend': ['adx'],
@@ -38,13 +36,11 @@ export function DatasetWorkspace({
   theme,
   onChangeData,
   onHistoryRequirement,
-  heatmapPalette,
 }: {
   dataset: Dataset;
   theme: ThemeDefinition;
   onChangeData: () => void;
   onHistoryRequirement?: (bars: number, nativeBars: number) => void;
-  heatmapPalette?: HeatmapPalette;
 }) {
   const {
     chartStyle,
@@ -688,13 +684,6 @@ export function DatasetWorkspace({
           </section>
         </aside>
       </div>
-      <SeasonalityPanel
-        dataset={sourceDataset}
-        sourceName={
-          demo ? 'Synthetic demo data' : live ? providerName : 'Imported CSV'
-        }
-        palette={heatmapPalette}
-      />
       <GlassPanel className="calculation-settings">
         <IndicatorControls
           parameters={parameters}

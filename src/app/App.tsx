@@ -41,6 +41,7 @@ import { ProviderPanel } from '../features/settings/ProviderPanel';
 import { CorrelationPage } from '../features/correlation/CorrelationPage';
 import { RotationPage } from '../features/rotation/RotationPage';
 import { PerformancePage } from '../features/performance/PerformancePage';
+import { SeasonalityPanel } from '../features/seasonality/SeasonalityPanel';
 import { AlphaVantageProvider } from '../providers/alpha-vantage';
 import { TwelveDataProvider } from '../providers/twelve-data';
 import { YahooFinanceProvider } from '../providers/yahoo-finance';
@@ -52,7 +53,7 @@ import { readCredential } from '../storage/provider-credential';
 type LoadState =
   | { status: 'initial' | 'loading' | 'error' }
   | { status: 'ready'; dataset: Dataset };
-const pages = ['correlation', 'rotation', 'performance'] as const;
+const pages = ['correlation', 'rotation', 'performance', 'monthly'] as const;
 type Page = 'workspace' | (typeof pages)[number];
 const routePage = (): Page =>
   pages.find((page) => location.hash === `#${page}`) ?? 'workspace';
@@ -122,6 +123,8 @@ export function App({
   }, [theme]);
   const preferenceSaved = useWorkspace((value) => value.preferenceSaved);
   const [page, setPage] = useState<Page>(routePage);
+  /** The Monthly returns page's own stock, independent of the Chart page. */
+  const [monthlyDataset, setMonthlyDataset] = useState<Dataset | null>(null);
   useEffect(() => {
     const sync = () => setPage(routePage());
     window.addEventListener('popstate', sync);
@@ -421,6 +424,16 @@ export function App({
             >
               Performance
             </a>
+            <a
+              href="#monthly"
+              aria-current={page === 'monthly' ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                showPage('monthly');
+              }}
+            >
+              Monthly returns
+            </a>
           </nav>
           <div className="header-actions">
             <button
@@ -554,6 +567,15 @@ export function App({
               dark={theme.colorScheme === 'dark'}
             />
           )}
+          {page === 'monthly' && (
+            <SeasonalityPanel
+              dataset={monthlyDataset}
+              chartDataset={dataset}
+              onDataset={setMonthlyDataset}
+              palette={preference.heatmapPalette}
+              onBack={() => showPage('workspace')}
+            />
+          )}
           <div className="workspace-view" hidden={page !== 'workspace'}>
             {importOpen && (
               <CsvImportPanel
@@ -596,7 +618,6 @@ export function App({
                 theme={theme}
                 onChangeData={home}
                 onHistoryRequirement={historyRequirement}
-                heatmapPalette={preference.heatmapPalette}
               />
             )}
             {library.datasets.length > 0 && (
